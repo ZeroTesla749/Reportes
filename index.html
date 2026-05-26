@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes Laguna · Inspección de tubulares</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Librería para generar PowerPoint en el navegador -->
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+
+  <!-- ============================================================
+       CABECERA SUPERIOR
+       ============================================================ -->
+  <header class="topbar">
+    <div class="topbar-titulo">
+      <div class="tag">REPORTES LAGUNA</div>
+      <h1>Inspección de tubulares</h1>
+    </div>
+    <div class="topbar-acciones">
+      <div id="estado-conexion" class="badge badge-warning">
+        <span class="icon">●</span>
+        <span class="texto">Conectando...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       LAYOUT PRINCIPAL: MENÚ LATERAL + CONTENIDO
+       ============================================================ -->
+  <main class="layout">
+
+    <!-- Menú lateral -->
+    <nav class="sidebar">
+      <div class="sidebar-titulo">MENÚ</div>
+
+      <a href="#" class="nav-item active" data-seccion="generar">
+        <span class="nav-icon">▶</span>
+        <span>Generar reporte</span>
+      </a>
+      <a href="#" class="nav-item" data-seccion="datos">
+        <span class="nav-icon">▦</span>
+        <span>Ver/editar datos</span>
+      </a>
+      <a href="#" class="nav-item" data-seccion="agregar">
+        <span class="nav-icon">+</span>
+        <span>Agregar registros</span>
+      </a>
+      <a href="#" class="nav-item" data-seccion="indicadores">
+        <span class="nav-icon">▤</span>
+        <span>Indicadores</span>
+      </a>
+      <a href="#" class="nav-item" data-seccion="config">
+        <span class="nav-icon">⚙</span>
+        <span>Configuración</span>
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-titulo">PROYECTO</div>
+        <div class="sidebar-footer-texto">Base Laguna<br>El Alto · 2026</div>
+      </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <section class="contenido">
+
+      <!-- ===== SECCIÓN: GENERAR REPORTE ===== -->
+      <div id="seccion-generar" class="seccion activa">
+        <div class="seccion-header">
+          <h2>Generar reporte</h2>
+          <p class="seccion-sub">Selecciona el tipo y rango de fechas, y descarga la presentación.</p>
+        </div>
+
+        <!-- Tipo de reporte -->
+        <div class="panel">
+          <div class="panel-titulo">TIPO DE REPORTE</div>
+          <div class="tipos-grid">
+            <div class="tipo-card activa" data-tipo="diario">
+              <div class="tipo-icon">📅</div>
+              <div class="tipo-label">Diario</div>
+            </div>
+            <div class="tipo-card" data-tipo="semanal">
+              <div class="tipo-icon">📆</div>
+              <div class="tipo-label">Semanal</div>
+            </div>
+            <div class="tipo-card" data-tipo="mensual">
+              <div class="tipo-icon">🗓️</div>
+              <div class="tipo-label">Mensual</div>
+            </div>
+            <div class="tipo-card" data-tipo="rango">
+              <div class="tipo-icon">🎯</div>
+              <div class="tipo-label">Rango</div>
+            </div>
+            <div class="tipo-card" data-tipo="avance">
+              <div class="tipo-icon">📊</div>
+              <div class="tipo-label">Avance total</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuración dinámica -->
+        <div class="panel" id="panel-config-tipo">
+          <div class="panel-titulo amarillo">REPORTE DIARIO · Selecciona la fecha</div>
+          <div id="config-tipo-contenido">
+            <!-- Se rellena dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Opciones adicionales -->
+        <div class="panel">
+          <div class="panel-titulo">OPCIONES ADICIONALES</div>
+          <div class="opciones-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" id="opt-incluir-fotos" checked>
+              <span>Incluir slide de fotos al final</span>
+            </label>
+            <button class="btn-secundario" id="btn-editar-etiquetas">
+              Editar etiquetas de fotos
+            </button>
+          </div>
+          <div class="opciones-info" id="info-etiquetas">
+            6 etiquetas configuradas
+          </div>
+        </div>
+
+        <!-- Botón Generar -->
+        <div class="acciones-finales">
+          <button class="btn-principal" id="btn-generar">
+            ▶ Generar y descargar PPT
+          </button>
+          <button class="btn-secundario" id="btn-recargar-datos">
+            ↻ Recargar datos del Sheet
+          </button>
+          <div class="resultado-info" id="resultado-info"></div>
+        </div>
+      </div>
+
+      <!-- ===== SECCIÓN: VER/EDITAR DATOS ===== -->
+      <div id="seccion-datos" class="seccion">
+        <div class="seccion-header">
+          <h2>Ver y editar datos</h2>
+          <p class="seccion-sub">Muestra los registros del Sheet. Haz clic en una celda para editar.</p>
+        </div>
+
+        <div class="tabs-hojas">
+          <button class="tab-hoja activa" data-hoja="recepcion">Recepción</button>
+          <button class="tab-hoja" data-hoja="estiba">Estiba</button>
+          <button class="tab-hoja" data-hoja="despacho">Despacho</button>
+        </div>
+
+        <div class="panel">
+          <div class="tabla-container" id="tabla-datos-container">
+            <div class="placeholder">Cargando datos...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECCIÓN: AGREGAR REGISTROS ===== -->
+      <div id="seccion-agregar" class="seccion">
+        <div class="seccion-header">
+          <h2>Agregar registros</h2>
+          <p class="seccion-sub">Ingresa nuevos datos a las hojas del Sheet.</p>
+        </div>
+
+        <div class="tabs-hojas">
+          <button class="tab-agregar activa" data-hoja="recepcion">+ Recepción</button>
+          <button class="tab-agregar" data-hoja="estiba">+ Estiba</button>
+          <button class="tab-agregar" data-hoja="despacho">+ Despacho</button>
+        </div>
+
+        <div class="panel">
+          <div id="form-agregar-container">
+            <!-- Se rellena dinámicamente -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECCIÓN: INDICADORES ===== -->
+      <div id="seccion-indicadores" class="seccion">
+        <div class="seccion-header">
+          <h2>Indicadores del proyecto</h2>
+          <p class="seccion-sub">Resumen acumulado en tiempo real.</p>
+        </div>
+
+        <div id="indicadores-container">
+          <div class="placeholder">Cargando indicadores...</div>
+        </div>
+      </div>
+
+      <!-- ===== SECCIÓN: CONFIGURACIÓN ===== -->
+      <div id="seccion-config" class="seccion">
+        <div class="seccion-header">
+          <h2>Configuración</h2>
+          <p class="seccion-sub">Conexión con Google Sheets y preferencias de la aplicación.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-titulo amarillo">URL DEL APPS SCRIPT WEB APP</div>
+          <p class="config-help">
+            Pega aquí la URL de tu Apps Script Web App (Implementar → Aplicación web).
+            Se guarda localmente en tu navegador.
+          </p>
+          <input type="text" id="config-url-api" class="input-grande"
+                 placeholder="https://script.google.com/macros/s/.../exec">
+          <div class="acciones-finales">
+            <button class="btn-principal" id="btn-guardar-url">Guardar y probar conexión</button>
+            <span class="resultado-info" id="config-resultado"></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-titulo verde">ETIQUETAS DE FOTOS</div>
+          <p class="config-help">
+            Estas etiquetas aparecen debajo de cada marco en la slide de fotos del reporte.
+            Se guardan localmente en tu navegador.
+          </p>
+          <div id="config-etiquetas-lista"></div>
+          <div class="acciones-finales">
+            <button class="btn-secundario" id="btn-agregar-etiqueta">+ Agregar etiqueta</button>
+            <button class="btn-principal" id="btn-guardar-etiquetas">Guardar etiquetas</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-titulo naranja">PREPARADO POR</div>
+          <input type="text" id="config-preparado-por" class="input-grande"
+                 placeholder="Tu nombre">
+          <div class="acciones-finales">
+            <button class="btn-secundario" id="btn-guardar-preparado">Guardar nombre</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal genérico -->
+  <div id="modal" class="modal oculto">
+    <div class="modal-contenido">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Título</h3>
+        <button class="modal-cerrar" id="modal-cerrar">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/sheets-api.js"></script>
+  <script src="js/lector-datos.js"></script>
+  <script src="js/kpis.js"></script>
+  <script src="js/generador-ppt.js"></script>
+  <script src="js/ui-generar.js"></script>
+  <script src="js/ui-datos.js"></script>
+  <script src="js/ui-agregar.js"></script>
+  <script src="js/ui-indicadores.js"></script>
+  <script src="js/ui-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
