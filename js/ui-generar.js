@@ -25,17 +25,136 @@ const UIGenerar = {
       await App.cargarDatos(true);
     });
 
-    // Botón editar etiquetas
-    document.getElementById('btn-editar-etiquetas').addEventListener('click', () =>
-      this.abrirEditorEtiquetas());
-
-    // Checkbox fotos
+    // Checkbox fotos: muestra/oculta panel de imágenes
     document.getElementById('opt-incluir-fotos').addEventListener('change', e => {
-      document.getElementById('btn-editar-etiquetas').disabled = !e.target.checked;
+      document.getElementById('imagenes-panel').style.display =
+        e.target.checked ? 'block' : 'none';
     });
 
-    this.refrescarInfoEtiquetas();
+    // Selector de cantidad de fotos
+    document.getElementById('opt-cantidad-fotos').addEventListener('change', e => {
+      this._renderizarSlotsImagenes(parseInt(e.target.value));
+    });
+
+    // Render inicial de slots de imágenes
+    this._renderizarSlotsImagenes(6);
+
     this.refrescarPanelConfig();
+  },
+
+  // ============================================================
+  // SLOTS DE IMÁGENES
+  // ============================================================
+  _renderizarSlotsImagenes(cantidad) {
+    const grid = document.getElementById('imagenes-grid');
+    const etiquetasGuardadas = Prefs.getEtiquetas();
+
+    // Ajustar el array de imágenes activas a la nueva cantidad
+    ImagenesActivas.ajustarLongitud(cantidad);
+
+    let html = '';
+    for (let i = 0; i < cantidad; i++) {
+      const item = ImagenesActivas.get(i);
+      const etiqueta = (item && item.etiqueta) ||
+                       etiquetasGuardadas[i] ||
+                       `Foto ${i + 1}`;
+      const tieneImg = item && item.dataUrl;
+      html += `
+        <div class="imagen-slot ${tieneImg ? 'con-imagen' : ''}" data-slot="${i}">
+          <div class="imagen-slot-preview ${tieneImg ? '' : 'vacio'}"
+               style="${tieneImg ? `background-image: url('${item.dataUrl}');` : ''}">
+          </div>
+          <input type="text" class="etiqueta-imagen"
+                 placeholder="Descripción de la foto"
+                 value="${this._escAttr(etiqueta)}"
+                 data-slot="${i}">
+          <input type="file" accept="image/*" data-slot="${i}">
+          ${tieneImg ? `
+            <div class="imagen-slot-acciones">
+              <button class="btn-quitar-imagen" data-quitar="${i}">✕ Quitar</button>
+            </div>
+            <div class="imagen-slot-info">${item.width}×${item.height} · ${item.sizeKB}KB</div>
+          ` : ''}
+        </div>
+      `;
+    }
+    grid.innerHTML = html;
+
+    // Conectar listeners
+    grid.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', e => this._onFileSelected(e));
+    });
+    grid.querySelectorAll('.etiqueta-imagen').forEach(input => {
+      input.addEventListener('change', e => this._onEtiquetaChange(e));
+      // No re-render onclick para no perder foco
+      input.addEventListener('click', e => e.stopPropagation());
+    });
+    grid.querySelectorAll('[data-quitar]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        const idx = parseInt(btn.dataset.quitar);
+        ImagenesActivas.quitar(idx);
+        this._renderizarSlotsImagenes(cantidad);
+        this._actualizarInfoImagenes();
+      });
+    });
+
+    this._actualizarInfoImagenes();
+  },
+
+  async _onFileSelected(e) {
+    const input = e.target;
+    const idx = parseInt(input.dataset.slot);
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const slot = input.closest('.imagen-slot');
+    slot.querySelector('.imagen-slot-preview').textContent = '⏳ Procesando...';
+
+    try {
+      const procesada = await ImagenUtil.procesar(file);
+      // Conservar etiqueta si ya existía
+      const itemPrevio = ImagenesActivas.get(idx);
+      const etiqueta = itemPrevio && itemPrevio.etiqueta;
+
+      ImagenesActivas.set(idx, {
+        dataUrl: procesada.dataUrl,
+        etiqueta: etiqueta || `Foto ${idx + 1}`,
+        width: procesada.width,
+        height: procesada.height,
+        sizeKB: procesada.sizeKB
+      });
+
+      // Re-render
+      const cantidad = parseInt(document.getElementById('opt-cantidad-fotos').value);
+      this._renderizarSlotsImagenes(cantidad);
+    } catch (err) {
+      alert('Error al cargar imagen: ' + err.message);
+      console.error(err);
+    }
+  },
+
+  _onEtiquetaChange(e) {
+    const idx = parseInt(e.target.dataset.slot);
+    ImagenesActivas.setEtiqueta(idx, e.target.value);
+  },
+
+  _actualizarInfoImagenes() {
+    const conImg = ImagenesActivas.conImagen().length;
+    const total = ImagenesActivas.todas().length;
+    const info = document.getElementById('info-imagenes');
+    if (info) {
+      const totalKB = ImagenesActivas.todas()
+        .filter(i => i && i.sizeKB)
+        .reduce((a, i) => a + i.sizeKB, 0);
+      info.textContent = `${conImg} / ${total} imágenes cargadas` +
+        (totalKB > 0 ? ` · ${totalKB}KB` : '');
+    }
+  },
+
+  _escAttr(s) {
+    return String(s == null ? '' : s).replace(/"/g, '&quot;');
   },
 
   // Refresca panel de configuración del tipo seleccionado
@@ -212,31 +331,26 @@ const UIGenerar = {
     const kpis = KPIs.calcular(datos);
     const acumulados = KPIs.acumuladosProyecto();
     const incluirFotos = document.getElementById('opt-incluir-fotos').checked;
-    const etiquetas = Prefs.getEtiquetas();
     const preparadoPor = Prefs.getPreparadoPor();
+
+    // Extraer las imágenes y etiquetas del estado actual
+    // (mantiene posiciones aunque algunas estén vacías)
+    const imagenes = ImagenesActivas.todas().map((item, i) => {
+      if (!item) return { dataUrl: null, etiqueta: `Foto ${i + 1}` };
+      return {
+        dataUrl: item.dataUrl || null,
+        etiqueta: item.etiqueta || `Foto ${i + 1}`
+      };
+    });
 
     return {
       tipoReporte: tipo,
       datos, kpis, acumulados,
       periodoTitulo, periodoSubtitulo, fechasStr,
-      etiquetasFotos: etiquetas,
+      imagenes,
       incluirFotos,
       preparadoPor
     };
-  },
-
-  refrescarInfoEtiquetas() {
-    const et = Prefs.getEtiquetas();
-    document.getElementById('info-etiquetas').textContent =
-      `${et.length} etiquetas configuradas`;
-  },
-
-  abrirEditorEtiquetas() {
-    // Reutiliza el editor que está en la sección Configuración
-    UIConfig.abrirSeccion();
-    // Hace scroll al panel de etiquetas
-    const panel = document.querySelector('#seccion-config .panel-titulo.verde');
-    if (panel) panel.scrollIntoView({ behavior: 'smooth' });
   },
 
   _fmtFecha(d) {

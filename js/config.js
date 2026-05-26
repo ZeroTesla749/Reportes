@@ -41,6 +41,63 @@ const CONFIG = {
     recepcion: 'BASE_LAGUNA_CONSOLIDADO',
     estiba:    'BASE_LAGUNA_CONTROL DE ESTIBADO',
     despacho:  'BASE_LAGUNA_DESPACHO'
+  },
+
+  // ============================================================
+  // CATÁLOGO DE MATERIALES (extraído del Excel original)
+  // Usado para autocompletar descripción al escribir el código
+  // en los formularios de Agregar Registros.
+  //
+  // Para añadir nuevos códigos, agrega aquí una nueva entrada.
+  // ============================================================
+  catalogo: {
+    // === CASING ===
+    '440000024': { tipo: 'CASING', desc: 'CASING 5-1/2", K55, 15.5 LB/FT,LTC,BRD,R3' },
+    '440000025': { tipo: 'CASING', desc: 'CASING 5-1/2", K55, 17.0 LB/FT,LTC,BRD,R3' },
+    '440000026': { tipo: 'CASING', desc: 'CASING 5-1/2", N80Q, 17.0 LB/FT,LTC,BRD,R3' },
+    '440000027': { tipo: 'CASING', desc: 'CASING 5-1/2", N80Q, 20.0 LB/FT,LTC,BTC,R3' },
+    '440000028': { tipo: 'CASING', desc: 'CASING 9 5/8 - H40 32.3 LB/FT, LTC,BRD,R3' },
+    '440000029': { tipo: 'CASING', desc: 'CASING 9 5/8 - N80 40.0 LB/FT, LTC,BRD,R3' },
+    '440000030': { tipo: 'CASING', desc: 'CASING 13 3/8 - H40 48.0 LB/FT, LTC,BRD,R3' },
+    // === AIB ===
+    '290000246': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C-80D-133-54 API 11E CLASE I' },
+    '290000247': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C160D-200-74TH API 11E CLASE I' },
+    '290000566': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C-228D-213-86 API 11E CLASE I' },
+    '290000567': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C320D-305 API 11E CLASE I' },
+    '290000568': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C114D-173-64TH API 11E CLASE I' }
+  }
+};
+
+// ============================================================
+// HELPER: Lookup de código → descripción
+// ============================================================
+const Catalogo = {
+  buscar(codigo) {
+    if (!codigo) return null;
+    // Normalizar: quitar espacios y ceros iniciales
+    const cod = String(codigo).trim().replace(/^0+/, '');
+    return CONFIG.catalogo[cod] || null;
+  },
+
+  buscarPorDescripcion(desc) {
+    if (!desc) return null;
+    const d = String(desc).trim().toLowerCase();
+    for (const [cod, item] of Object.entries(CONFIG.catalogo)) {
+      if (item.desc.toLowerCase() === d) {
+        return { codigo: cod, ...item };
+      }
+    }
+    return null;
+  },
+
+  todos() {
+    return Object.entries(CONFIG.catalogo).map(([codigo, item]) => ({
+      codigo, ...item
+    }));
+  },
+
+  porTipo(tipo) {
+    return this.todos().filter(i => i.tipo === tipo);
   }
 };
 

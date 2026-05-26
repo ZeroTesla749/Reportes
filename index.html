@@ -109,18 +109,30 @@
 
         <!-- Opciones adicionales -->
         <div class="panel">
-          <div class="panel-titulo">OPCIONES ADICIONALES</div>
+          <div class="panel-titulo">SLIDE DE FOTOS</div>
           <div class="opciones-grid">
             <label class="checkbox-label">
               <input type="checkbox" id="opt-incluir-fotos" checked>
               <span>Incluir slide de fotos al final</span>
             </label>
-            <button class="btn-secundario" id="btn-editar-etiquetas">
-              Editar etiquetas de fotos
-            </button>
           </div>
-          <div class="opciones-info" id="info-etiquetas">
-            6 etiquetas configuradas
+
+          <div class="imagenes-panel" id="imagenes-panel">
+            <div class="imagen-cantidad-selector">
+              <label>Cantidad de fotos:</label>
+              <select id="opt-cantidad-fotos">
+                <option value="2">2 fotos</option>
+                <option value="4">4 fotos</option>
+                <option value="6" selected>6 fotos</option>
+                <option value="8">8 fotos</option>
+              </select>
+              <span class="opciones-info" id="info-imagenes">0 imágenes cargadas</span>
+            </div>
+            <div class="imagenes-grid" id="imagenes-grid"></div>
+            <p style="margin: 10px 0 0; color: var(--c-txt-gris); font-size: 11px;">
+              Las imágenes se redimensionan automáticamente a 1200x900 máx. y se recortan para llenar el cuadro del PPT.
+              Si dejas un slot vacío, aparecerá como marco placeholder en el PPT.
+            </p>
           </div>
         </div>
 
@@ -252,6 +264,7 @@
   <script src="js/sheets-api.js"></script>
   <script src="js/lector-datos.js"></script>
   <script src="js/kpis.js"></script>
+  <script src="js/imagen-util.js"></script>
   <script src="js/generador-ppt.js"></script>
   <script src="js/ui-generar.js"></script>
   <script src="js/ui-datos.js"></script>

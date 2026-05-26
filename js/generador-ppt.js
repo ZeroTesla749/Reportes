@@ -51,8 +51,8 @@ const GeneradorPPT = {
 
     this._slideConclusiones(pres, opciones);
 
-    if (opciones.incluirFotos && opciones.etiquetasFotos && opciones.etiquetasFotos.length > 0) {
-      this._slideFotos(pres, opciones);
+    if (opciones.incluirFotos && opciones.imagenes && opciones.imagenes.length > 0) {
+      await this._slideFotos(pres, opciones);
     }
 
     // Nombre del archivo
@@ -774,53 +774,90 @@ const GeneradorPPT = {
   // ============================================================
   // SLIDE: FOTOS
   // ============================================================
-  _slideFotos(pres, opt) {
+  async _slideFotos(pres, opt) {
     const slide = pres.addSlide();
     slide.background = { color: this.C.gris };
     this._addTitleBar(slide, 'REGISTRO FOTOGRÁFICO',
                        opt.periodoTitulo, this.C.verde);
 
-    const etiquetas = opt.etiquetasFotos;
-    const n = etiquetas.length;
+    // Recibe opt.imagenes (nuevo formato): array de { dataUrl, etiqueta }
+    // El nro de slots = opt.imagenes.length
+    const imagenes = opt.imagenes || [];
+    const n = imagenes.length;
+    if (n === 0) return;
+
     let cols, rows;
-    if (n <= 4) { cols = 2; rows = 2; }
+    if (n <= 2) { cols = 2; rows = 1; }
+    else if (n <= 4) { cols = 2; rows = 2; }
     else if (n <= 6) { cols = 3; rows = 2; }
     else { cols = 4; rows = 2; }
 
     const fgx = 0.3, fgy = 1.1;
-    const availW = 12.7, availH = 5.2;
+    const availW = 12.7;
+    const availH = (rows === 1) ? 3.0 : 5.2;
     const gxGap = 0.2, gyGap = 0.3;
     const fw = (availW - (cols - 1) * gxGap) / cols;
     const fh = (availH - (rows - 1) * gyGap) / rows;
 
     const colores = [this.C.verde, this.C.amarillo, this.C.naranja];
 
-    etiquetas.slice(0, cols * rows).forEach((et, i) => {
+    // Procesar cada imagen (con recorte cover) en paralelo
+    // PptxGenJS necesita dimensiones razonables del recorte
+    const recortePromises = imagenes.slice(0, cols * rows).map(item => {
+      if (!item || !item.dataUrl) return Promise.resolve(null);
+      return ImagenUtil.recortarCover(item.dataUrl, fw, fh)
+        .catch(err => {
+          console.warn('Error al recortar imagen:', err);
+          return null;  // Si falla, usar dataUrl original
+        });
+    });
+    const recortadas = await Promise.all(recortePromises);
+
+    imagenes.slice(0, cols * rows).forEach((item, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = fgx + col * (fw + gxGap);
       const y = fgy + row * (fh + gyGap);
       const border = colores[i % 3];
 
-      // Marco
-      slide.addShape('rect', {
-        x, y, w: fw, h: fh,
-        fill: { color: this.C.grisOsc },
-        line: { color: border, width: 1.5, dashType: 'dash' }
-      });
-      // Texto central
-      slide.addText('[ ESPACIO PARA FOTO ]', {
-        x, y: y + fh / 2 - 0.25, w: fw, h: 0.5,
-        fontSize: 11, bold: true, color: this.C.txtGris,
-        fontFace: 'Calibri', align: 'center', valign: 'middle'
-      });
-      slide.addText(`#${i + 1}`, {
-        x, y: y + fh / 2 + 0.1, w: fw, h: 0.3,
-        fontSize: 9, color: this.C.txtGris,
-        fontFace: 'Calibri', align: 'center', valign: 'middle'
-      });
-      // Etiqueta debajo
-      slide.addText(et, {
+      const etiqueta = (item && item.etiqueta) || `Foto ${i + 1}`;
+      const tieneImg = item && item.dataUrl;
+
+      if (tieneImg) {
+        // Insertar la imagen recortada (cover)
+        const dataUrlFinal = (recortadas[i] && recortadas[i].dataUrl) || item.dataUrl;
+        slide.addImage({
+          data: dataUrlFinal,
+          x, y, w: fw, h: fh,
+          sizing: { type: 'cover', w: fw, h: fh }
+        });
+        // Borde de color sobre la imagen
+        slide.addShape('rect', {
+          x, y, w: fw, h: fh,
+          fill: { type: 'none' },
+          line: { color: border, width: 2 }
+        });
+      } else {
+        // Placeholder cuando no hay imagen
+        slide.addShape('rect', {
+          x, y, w: fw, h: fh,
+          fill: { color: this.C.grisOsc },
+          line: { color: border, width: 1.5, dashType: 'dash' }
+        });
+        slide.addText('[ ESPACIO PARA FOTO ]', {
+          x, y: y + fh / 2 - 0.25, w: fw, h: 0.5,
+          fontSize: 11, bold: true, color: this.C.txtGris,
+          fontFace: 'Calibri', align: 'center', valign: 'middle'
+        });
+        slide.addText(`#${i + 1}`, {
+          x, y: y + fh / 2 + 0.1, w: fw, h: 0.3,
+          fontSize: 9, color: this.C.txtGris,
+          fontFace: 'Calibri', align: 'center', valign: 'middle'
+        });
+      }
+
+      // Etiqueta debajo del marco
+      slide.addText(etiqueta, {
         x, y: y + fh + 0.02, w: fw, h: 0.25,
         fontSize: 10, bold: true, color: 'D0D0D0',
         fontFace: 'Calibri', align: 'center', valign: 'middle'
