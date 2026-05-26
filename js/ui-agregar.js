@@ -93,11 +93,10 @@ const UIAgregar = {
     `;
     cont.innerHTML = html;
 
-    // Auto-rellenar fecha con hoy
+    // Auto-rellenar fecha con hoy (componentes locales)
     const fechaInput = cont.querySelector('input[type=date]');
     if (fechaInput) {
-      const hoy = new Date();
-      fechaInput.value = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+      fechaInput.value = FechaUtil.toInputDate(new Date());
     }
 
     document.getElementById('btn-agregar-fila').addEventListener('click', () => this.guardar());

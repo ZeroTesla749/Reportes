@@ -68,7 +68,7 @@ const UIGenerar = {
         <div class="config-fila">
           <label class="config-label">Fecha:</label>
           <input type="date" id="cfg-fecha-diaria" class="input-fecha"
-                 value="${this._isoDate(rango.max || new Date())}">
+                 value="${FechaUtil.toInputDate(rango.max || new Date())}">
           <span class="config-help-text">Datos disponibles: ${fminStr} – ${fmaxStr}</span>
         </div>
       `;
@@ -111,10 +111,10 @@ const UIGenerar = {
         <div class="config-fila">
           <label class="config-label">Desde:</label>
           <input type="date" id="cfg-desde" class="input-fecha"
-                 value="${this._isoDate(rango.min || new Date())}">
+                 value="${FechaUtil.toInputDate(rango.min || new Date())}">
           <label class="config-label">Hasta:</label>
           <input type="date" id="cfg-hasta" class="input-fecha"
-                 value="${this._isoDate(rango.max || new Date())}">
+                 value="${FechaUtil.toInputDate(rango.max || new Date())}">
         </div>
       `;
     } else if (this.tipoSeleccionado === 'avance') {
@@ -164,7 +164,7 @@ const UIGenerar = {
     if (tipo === 'diario') {
       const fStr = document.getElementById('cfg-fecha-diaria').value;
       if (!fStr) throw new Error('Selecciona una fecha.');
-      const f = new Date(fStr);
+      const f = FechaUtil.parseLocal(fStr);  // FIX: parsea como local, no UTC
       datos = LectorDatos.filtrarPorRango(f, f);
       periodoTitulo = this._fmtFecha(f);
       periodoSubtitulo = this._diaSemanaTexto(f);
@@ -180,8 +180,9 @@ const UIGenerar = {
 
     } else if (tipo === 'mensual') {
       const [anio, mes] = document.getElementById('cfg-mes').value.split('-').map(Number);
-      const fd = new Date(anio, mes - 1, 1);
-      const fh = new Date(anio, mes, 0);
+      const fd = FechaUtil.local(anio, mes, 1);
+      // Último día del mes: día 0 del mes siguiente
+      const fh = new Date(anio, mes, 0, 0, 0, 0, 0);
       datos = LectorDatos.filtrarPorRango(fd, fh);
       const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       periodoTitulo = `${nombres[mes-1].toUpperCase()} ${anio}`;
@@ -192,7 +193,8 @@ const UIGenerar = {
       const fdStr = document.getElementById('cfg-desde').value;
       const fhStr = document.getElementById('cfg-hasta').value;
       if (!fdStr || !fhStr) throw new Error('Selecciona ambas fechas.');
-      const fd = new Date(fdStr), fh = new Date(fhStr);
+      const fd = FechaUtil.parseLocal(fdStr);  // FIX
+      const fh = FechaUtil.parseLocal(fhStr);  // FIX
       if (fd > fh) throw new Error('La fecha "desde" debe ser anterior a "hasta".');
       datos = LectorDatos.filtrarPorRango(fd, fh);
       periodoTitulo = `${this._fmtFecha(fd)} – ${this._fmtFecha(fh)}`;

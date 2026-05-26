@@ -44,6 +44,11 @@ const GeneradorPPT = {
     }
 
     this._slideInventario(pres, opciones);
+
+    // NUEVA SLIDE — Indicadores acumulados del proyecto
+    // Aparece en todos los tipos de reporte
+    this._slideIndicadoresAcumulados(pres, opciones);
+
     this._slideConclusiones(pres, opciones);
 
     if (opciones.incluirFotos && opciones.etiquetasFotos && opciones.etiquetasFotos.length > 0) {
@@ -820,6 +825,276 @@ const GeneradorPPT = {
         fontSize: 10, bold: true, color: 'D0D0D0',
         fontFace: 'Calibri', align: 'center', valign: 'middle'
       });
+    });
+  },
+
+  // ============================================================
+  // SLIDE: INDICADORES ACUMULADOS DEL PROYECTO
+  // (Réplica del formato del reporte S20)
+  // ============================================================
+  _slideIndicadoresAcumulados(pres, opt) {
+    const slide = pres.addSlide();
+    slide.background = { color: this.C.blanco };
+
+    // Encabezado oscuro
+    slide.addShape('rect', {
+      x: 0, y: 0, w: 13.33, h: 0.8,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addShape('rect', {
+      x: 0, y: 0.8, w: 13.33, h: 0.06,
+      fill: { color: this.C.verde }, line: { color: this.C.verde }
+    });
+    slide.addText('INDICADORES ACUMULADOS — PROYECTO', {
+      x: 0.35, y: 0.12, w: 9.5, h: 0.55,
+      fontSize: 18, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    // Sub-rótulo en derecha: rango de semanas
+    const semanas = KPIs.porSemana();
+    const semStr = semanas.length > 0
+      ? `Semanas ${semanas[0].semana} – ${semanas[semanas.length - 1].semana}  |  2026`
+      : '2026';
+    slide.addText(semStr, {
+      x: 9.5, y: 0.12, w: 3.6, h: 0.55,
+      fontSize: 13, color: this.C.amarillo,
+      fontFace: 'Calibri', align: 'right', valign: 'middle'
+    });
+
+    const d = KPIs.acumuladosDetallados();
+
+    // ============================================================
+    // 3 COLUMNAS de tarjetas (AIB / CASING / ESTIBADO)
+    // Cada columna tiene 2 filas x 2 tarjetas = 4 KPIs
+    // ============================================================
+    const colY = 1.1;
+    const colHeader = 0.4;
+    const cardH = 1.3;
+    const cardGap = 0.12;
+    const colGap = 0.25;
+    const totalW = 13.33 - 0.5;  // margen 0.25 a cada lado
+    const colW = (totalW - 2 * colGap) / 3;
+    const cardW = (colW - cardGap) / 2;
+
+    // === COLUMNA 1: AIB ===
+    this._indicAcumColumna(slide,
+      0.25, colY, colW, colHeader,
+      'EQUIPOS AIB — ACUMULADO GENERAL',
+      [
+        [`${d.aib_prom_descarga.toFixed(1)} min`, 'Promedio Descarga AIB', 'Tiempo prom por camión', this.C.amarillo],
+        [`${this._n(d.aib_stock_total)} eq.`,    'Stock Total AIB',       'Equipos en inventario',  this.C.verde],
+        [`${d.aib_eficiencia.toFixed(1)}%`,       'Eficiencia General AIB','Vs. estándar 40 min',    this.C.naranja],
+        [`${d.aib_productividad.toFixed(2)}`,     'Productividad AIB/Hora','Equipos por hora',       this.C.gris]
+      ],
+      cardW, cardH, cardGap
+    );
+
+    // === COLUMNA 2: CASING ===
+    const col2X = 0.25 + colW + colGap;
+    this._indicAcumColumna(slide,
+      col2X, colY, colW, colHeader,
+      'CASING — ACUMULADO GENERAL',
+      [
+        [`${d.casing_prom_descarga.toFixed(1)} min`, 'Promedio Descarga Casing','Tiempo prom por camión',this.C.amarillo],
+        [`${this._n(d.casing_stock_total)}`,         'Stock Total Casing',      'Tubos en almacén',      this.C.verde],
+        [`${d.casing_eficiencia.toFixed(1)}%`,       'Eficiencia General Casing','Vs. estándar 23.3 min',this.C.naranja],
+        [`${d.casing_productividad.toFixed(1)}`,     'Productividad Tubos/Hora','Tubos por hora',        this.C.verde]
+      ],
+      cardW, cardH, cardGap
+    );
+
+    // === COLUMNA 3: ESTIBADO ===
+    const col3X = 0.25 + 2 * (colW + colGap);
+    this._indicAcumColumna(slide,
+      col3X, colY, colW, colHeader,
+      'ESTIBADO — ACUMULADO GENERAL',
+      [
+        [this._n(d.est_total_tubos),    'Total Tubos Estibados',    'Acumulado en racks',  this.C.amarillo],
+        [this._n(d.est_total_paquetes), 'Total Paquetes Estibados', 'Acumulado en racks',  this.C.verde],
+        [`${d.est_avance.toFixed(1)}%`, 'Avance de Estiba',         'Del stock total (Casing)', this.C.naranja],
+        [`${d.est_productividad.toFixed(2)}`, 'Productividad Paq./Hora', 'Paquetes por hora', this.C.gris]
+      ],
+      cardW, cardH, cardGap
+    );
+
+    // ============================================================
+    // GRÁFICO DE EVOLUCIÓN (últimas 4 semanas con actividad)
+    // Eficiencia Casing (amarillo) vs Eficiencia AIB (naranja)
+    // ============================================================
+    // Filtrar semanas con actividad
+    const semanasActivas = semanas.filter(s =>
+      s.eficiencia_casing > 0 || s.eficiencia_aib > 0
+    );
+    const ultimas4 = semanasActivas.slice(-4);
+
+    if (ultimas4.length > 0) {
+      this._graficoEvolucion(slide, ultimas4, colY + colHeader + 2 * (cardH + cardGap) + 0.2);
+    }
+  },
+
+  /**
+   * Helper: dibuja una columna del slide de indicadores acumulados
+   * (4 tarjetas en 2x2)
+   */
+  _indicAcumColumna(slide, x, y, colW, headerH, titulo, kpis, cardW, cardH, gap) {
+    // Header de la columna
+    slide.addText(titulo, {
+      x, y, w: colW, h: headerH,
+      fontSize: 12, bold: true, color: this.C.gris,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+
+    // 2x2 grid de tarjetas
+    const yCard = y + headerH;
+    for (let i = 0; i < kpis.length && i < 4; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const cx = x + col * (cardW + gap);
+      const cy = yCard + row * (cardH + gap);
+      const [valor, label1, label2, barColor] = kpis[i];
+
+      // Panel blanco con borde sutil
+      slide.addShape('rect', {
+        x: cx, y: cy, w: cardW, h: cardH,
+        fill: { color: this.C.blanco },
+        line: { color: this.C.borde, width: 0.5 }
+      });
+      // Barra superior de color
+      slide.addShape('rect', {
+        x: cx, y: cy, w: cardW, h: 0.07,
+        fill: { color: barColor }, line: { color: barColor }
+      });
+      // Valor grande
+      slide.addText(valor, {
+        x: cx, y: cy + 0.1, w: cardW, h: 0.55,
+        fontSize: 24, bold: true, color: this.C.negro,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      // Label 1
+      slide.addText(label1, {
+        x: cx, y: cy + 0.7, w: cardW, h: 0.3,
+        fontSize: 11, bold: true, color: this.C.gris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      // Label 2 (sublabel)
+      slide.addText(label2, {
+        x: cx, y: cy + 1.0, w: cardW, h: 0.25,
+        fontSize: 9, color: this.C.txtGris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+    }
+  },
+
+  /**
+   * Helper: dibuja el gráfico de barras de evolución por semana
+   * (eficiencia casing amarilla vs eficiencia AIB naranja)
+   */
+  _graficoEvolucion(slide, semanas, yTop) {
+    // Título
+    slide.addText('EVOLUCIÓN EFICIENCIA — SEMANAS RECIENTES', {
+      x: 0.25, y: yTop, w: 13, h: 0.3,
+      fontSize: 12, bold: true, color: this.C.gris,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+
+    // Área del gráfico
+    const chartY = yTop + 0.35;
+    const chartH = 1.3;
+    const chartX = 0.25;
+    const chartW = 13;
+
+    // Línea base (eje X)
+    slide.addShape('line', {
+      x: chartX + 0.3, y: chartY + chartH,
+      w: chartW - 0.5, h: 0,
+      line: { color: this.C.gris, width: 1 }
+    });
+
+    // Etiqueta "70" en eje Y como referencia mínima
+    slide.addText('70', {
+      x: chartX - 0.05, y: chartY + chartH - 0.2, w: 0.35, h: 0.25,
+      fontSize: 9, color: this.C.gris,
+      fontFace: 'Calibri', align: 'right', valign: 'middle'
+    });
+
+    // Barras
+    const nSem = semanas.length;
+    const slotW = (chartW - 0.6) / nSem;  // ancho por semana
+    const barW = slotW * 0.22;             // ancho de cada barra (2 barras por semana)
+    const gap = slotW * 0.06;
+
+    // Mapeamos eficiencias al rango visual (70%–100% → 0–chartH)
+    const minPct = 70, maxPct = 100;
+    const mapH = pct => {
+      const p = Math.max(minPct, Math.min(maxPct, pct));
+      return chartH * ((p - minPct) / (maxPct - minPct));
+    };
+
+    semanas.forEach((s, i) => {
+      const slotX = chartX + 0.5 + i * slotW;
+      const efCasing = s.eficiencia_casing || 0;
+      const efAib = s.eficiencia_aib || 0;
+      const hCasing = mapH(efCasing);
+      const hAib = mapH(efAib);
+
+      // Barra amarilla (casing)
+      if (efCasing > 0) {
+        slide.addShape('rect', {
+          x: slotX, y: chartY + chartH - hCasing, w: barW, h: hCasing,
+          fill: { color: this.C.amarillo },
+          line: { color: this.C.amarillo }
+        });
+        // Valor encima
+        slide.addText(Math.round(efCasing).toString(), {
+          x: slotX - 0.1, y: chartY + chartH - hCasing - 0.25,
+          w: barW + 0.2, h: 0.22,
+          fontSize: 10, bold: true, color: this.C.gris,
+          fontFace: 'Calibri', align: 'center'
+        });
+      }
+
+      // Barra naranja (AIB)
+      const bx2 = slotX + barW + gap;
+      if (efAib > 0) {
+        slide.addShape('rect', {
+          x: bx2, y: chartY + chartH - hAib, w: barW, h: hAib,
+          fill: { color: this.C.naranja },
+          line: { color: this.C.naranja }
+        });
+        slide.addText(Math.round(efAib).toString(), {
+          x: bx2 - 0.1, y: chartY + chartH - hAib - 0.25,
+          w: barW + 0.2, h: 0.22,
+          fontSize: 10, bold: true, color: this.C.gris,
+          fontFace: 'Calibri', align: 'center'
+        });
+      }
+
+      // Etiqueta semana
+      slide.addText(`S${s.semana}`, {
+        x: slotX - 0.2, y: chartY + chartH + 0.05,
+        w: barW * 2 + gap + 0.4, h: 0.3,
+        fontSize: 11, bold: true, color: this.C.gris,
+        fontFace: 'Calibri', align: 'center'
+      });
+    });
+
+    // Leyenda (parte inferior derecha)
+    const leyY = chartY + chartH + 0.4;
+    slide.addShape('rect', {
+      x: chartW - 2.5, y: leyY, w: 0.2, h: 0.15,
+      fill: { color: this.C.amarillo }, line: { color: this.C.amarillo }
+    });
+    slide.addText('Casing', {
+      x: chartW - 2.25, y: leyY - 0.04, w: 0.8, h: 0.22,
+      fontSize: 9, color: this.C.gris, fontFace: 'Calibri'
+    });
+    slide.addShape('rect', {
+      x: chartW - 1.3, y: leyY, w: 0.2, h: 0.15,
+      fill: { color: this.C.naranja }, line: { color: this.C.naranja }
+    });
+    slide.addText('AIB', {
+      x: chartW - 1.05, y: leyY - 0.04, w: 0.8, h: 0.22,
+      fontSize: 9, color: this.C.gris, fontFace: 'Calibri'
     });
   },
 

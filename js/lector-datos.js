@@ -2,6 +2,84 @@
    LECTOR DE DATOS — Filtros y normalización
    ============================================================ */
 
+/**
+ * Helper centralizado para fechas.
+ *
+ * IMPORTANTE: el bug "selecciono 25 me da el 24" ocurría porque
+ * `new Date("2026-05-25")` en JavaScript se interpreta como UTC
+ * medianoche. En Perú (UTC-5) eso son las 19:00 del día 24 local.
+ * Por eso ahora parseamos los strings YYYY-MM-DD construyendo
+ * la fecha con los componentes locales explícitamente.
+ */
+const FechaUtil = {
+
+  /**
+   * Parsea un string "YYYY-MM-DD" como fecha LOCAL (medianoche local).
+   * Para strings con T (ISO completo) usa new Date estándar.
+   */
+  parseLocal(s) {
+    if (!s) return null;
+    if (s instanceof Date) return s;
+    if (typeof s !== 'string') return null;
+    s = s.trim();
+
+    // YYYY-MM-DD puro → fecha local a medianoche
+    const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m1) {
+      return new Date(parseInt(m1[1]), parseInt(m1[2]) - 1, parseInt(m1[3]),
+                       0, 0, 0, 0);
+    }
+
+    // DD/MM/YYYY también soportado
+    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m2) {
+      return new Date(parseInt(m2[3]), parseInt(m2[2]) - 1, parseInt(m2[1]),
+                       0, 0, 0, 0);
+    }
+
+    // ISO completo con hora
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  },
+
+  /** Construye una fecha local desde año, mes (1-12), día. */
+  local(anio, mes, dia) {
+    return new Date(anio, mes - 1, dia, 0, 0, 0, 0);
+  },
+
+  /** Inicio del día (00:00:00) local */
+  inicioDia(d) {
+    const r = new Date(d);
+    r.setHours(0, 0, 0, 0);
+    return r;
+  },
+
+  /** Fin del día (23:59:59.999) local */
+  finDia(d) {
+    const r = new Date(d);
+    r.setHours(23, 59, 59, 999);
+    return r;
+  },
+
+  /** Convierte una fecha a string YYYY-MM-DD (componentes locales) */
+  toInputDate(d) {
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dia}`;
+  },
+
+  /** Formatea DD/MM/YYYY */
+  fmt(d) {
+    if (!d) return '';
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dia}/${mes}/${d.getFullYear()}`;
+  }
+};
+
+
 const LectorDatos = {
 
   // ============================================================
@@ -84,14 +162,12 @@ const LectorDatos = {
   },
 
   // ============================================================
-  // FILTRAR POR RANGO DE FECHAS
+  // FILTRAR POR RANGO DE FECHAS (local time)
   // Devuelve { recepcion: [], estiba: [], despacho: [] }
   // ============================================================
   filtrarPorRango(fDesde, fHasta) {
-    const inicio = new Date(fDesde);
-    inicio.setHours(0, 0, 0, 0);
-    const fin = new Date(fHasta);
-    fin.setHours(23, 59, 59, 999);
+    const inicio = FechaUtil.inicioDia(fDesde);
+    const fin = FechaUtil.finDia(fHasta);
 
     const filtro = filas => filas.filter(r => {
       const f = this.parseFecha(r['FECHA']);

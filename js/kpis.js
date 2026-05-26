@@ -88,6 +88,142 @@ const KPIs = {
     return this.calcular(todo);
   },
 
+  /**
+   * Indicadores detallados para la slide "Indicadores Acumulados"
+   * (basada en el formato del reporte S20).
+   */
+  acumuladosDetallados() {
+    const rec = DatosCache.filas('recepcion');
+    const est = DatosCache.filas('estiba');
+
+    const recCasing = rec.filter(r => r['TIPO MATERIAL'] === 'CASING');
+    const recAib    = rec.filter(r => r['TIPO MATERIAL'] === 'AIB');
+
+    // === AIB ===
+    const stockAib = this._sum(recAib, 'TUBOS TOTALES / TOTAL AIB');
+    const promDescargaAib = this._avg(recAib, 'TIEMPO JORNADA');
+    const eficAib = this._avg(recAib, 'EFICIENCIA') * 100;
+    // Productividad AIB/h = total equipos / total horas
+    const horasAib = this._sum(recAib, 'TIEMPO JORNADA') / 60;
+    const prodAib = horasAib > 0 ? stockAib / horasAib : 0;
+
+    // === CASING ===
+    const stockCasing = this._sum(recCasing, 'TUBOS TOTALES / TOTAL AIB');
+    const promDescargaCasing = this._avg(recCasing, 'TIEMPO JORNADA');
+    const eficCasing = this._avg(recCasing, 'EFICIENCIA') * 100;
+    const horasCasing = this._sum(recCasing, 'TIEMPO JORNADA') / 60;
+    const prodTubosHora = horasCasing > 0 ? stockCasing / horasCasing : 0;
+
+    // === ESTIBADO ===
+    const totalTubosEst = this._sum(est, 'TOTAL DE TUBERIAS');
+    const totalPaqEst = this._sum(est, 'PAQUETES ESTIBADOS');
+    const avanceEstiba = stockCasing > 0 ? (totalTubosEst / stockCasing * 100) : 0;
+    const prodPaqHora = this._avg(est, 'PAQUETES/HORA');
+
+    return {
+      // AIB
+      aib_prom_descarga: promDescargaAib,
+      aib_stock_total: stockAib,
+      aib_eficiencia: eficAib,
+      aib_productividad: prodAib,
+      // CASING
+      casing_prom_descarga: promDescargaCasing,
+      casing_stock_total: stockCasing,
+      casing_eficiencia: eficCasing,
+      casing_productividad: prodTubosHora,
+      // ESTIBADO
+      est_total_tubos: totalTubosEst,
+      est_total_paquetes: totalPaqEst,
+      est_avance: avanceEstiba,
+      est_productividad: prodPaqHora,
+    };
+  },
+
+  /**
+   * KPIs agregados por semana — útil para gráfico de evolución.
+   * Devuelve array ordenado por semana ascendente:
+   * [ { semana: N, efic_casing, efic_aib, tubos_casing, tubos_aib, ... }, ... ]
+   */
+  porSemana() {
+    const rec = DatosCache.filas('recepcion');
+    const est = DatosCache.filas('estiba');
+    const semanasMap = {};
+
+    // Recepción
+    rec.forEach(r => {
+      let sem = parseInt(r['SEMANA']);
+      if (!sem || isNaN(sem)) {
+        const f = LectorDatos.parseFecha(r['FECHA']);
+        if (f) sem = LectorDatos.semanaISO(f);
+      }
+      if (!sem) return;
+
+      if (!semanasMap[sem]) {
+        semanasMap[sem] = {
+          semana: sem,
+          tubos_casing: 0, tubos_aib: 0,
+          ef_casing_sum: 0, ef_casing_n: 0,
+          ef_aib_sum: 0, ef_aib_n: 0,
+          paq_estiba: 0, tubos_estiba: 0,
+          pkth_sum: 0, pkth_n: 0
+        };
+      }
+      const t = parseFloat(r['TUBOS TOTALES / TOTAL AIB']) || 0;
+      const ef = parseFloat(r['EFICIENCIA']) || 0;
+      if (r['TIPO MATERIAL'] === 'CASING') {
+        semanasMap[sem].tubos_casing += t;
+        if (!isNaN(ef) && ef > 0) {
+          semanasMap[sem].ef_casing_sum += ef;
+          semanasMap[sem].ef_casing_n++;
+        }
+      } else if (r['TIPO MATERIAL'] === 'AIB') {
+        semanasMap[sem].tubos_aib += t;
+        if (!isNaN(ef) && ef > 0) {
+          semanasMap[sem].ef_aib_sum += ef;
+          semanasMap[sem].ef_aib_n++;
+        }
+      }
+    });
+
+    // Estiba
+    est.forEach(r => {
+      const f = LectorDatos.parseFecha(r['FECHA']);
+      if (!f) return;
+      const sem = LectorDatos.semanaISO(f);
+      if (!semanasMap[sem]) {
+        semanasMap[sem] = {
+          semana: sem,
+          tubos_casing: 0, tubos_aib: 0,
+          ef_casing_sum: 0, ef_casing_n: 0,
+          ef_aib_sum: 0, ef_aib_n: 0,
+          paq_estiba: 0, tubos_estiba: 0,
+          pkth_sum: 0, pkth_n: 0
+        };
+      }
+      semanasMap[sem].paq_estiba += parseFloat(r['PAQUETES ESTIBADOS']) || 0;
+      semanasMap[sem].tubos_estiba += parseFloat(r['TOTAL DE TUBERIAS']) || 0;
+      const pkth = parseFloat(r['PAQUETES/HORA']);
+      if (!isNaN(pkth) && pkth > 0) {
+        semanasMap[sem].pkth_sum += pkth;
+        semanasMap[sem].pkth_n++;
+      }
+    });
+
+    // Calcular promedios y convertir a array ordenado
+    return Object.values(semanasMap)
+      .map(s => ({
+        semana: s.semana,
+        tubos_casing: s.tubos_casing,
+        tubos_aib: s.tubos_aib,
+        eficiencia_casing: s.ef_casing_n > 0 ? (s.ef_casing_sum / s.ef_casing_n * 100) : 0,
+        eficiencia_aib:    s.ef_aib_n > 0    ? (s.ef_aib_sum / s.ef_aib_n * 100)    : 0,
+        paquetes_estiba: s.paq_estiba,
+        tubos_estiba: s.tubos_estiba,
+        pkth: s.pkth_n > 0 ? (s.pkth_sum / s.pkth_n) : 0
+      }))
+      .sort((a, b) => a.semana - b.semana);
+  },
+
   _sum(arr, key) {
     let s = 0;
     arr.forEach(r => {
