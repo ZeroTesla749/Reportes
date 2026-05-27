@@ -975,3 +975,104 @@ html, body {
 .catalogo-tabla .tabla-datos td {
   font-size: 11px;
 }
+
+/* ============================================================
+   PERSONAL ASISTENTE (en Generar reporte)
+   ============================================================ */
+.personal-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--c-gris);
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.personal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--c-gris-osc);
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--c-gris-cla);
+  transition: all 0.15s;
+}
+
+.personal-item:hover {
+  border-color: var(--c-amarillo);
+}
+
+.personal-item.marcado {
+  background: rgba(151, 215, 0, 0.15);
+  border-color: var(--c-verde);
+}
+
+.personal-item input[type="checkbox"] {
+  accent-color: var(--c-verde);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.personal-num {
+  color: var(--c-txt-gris);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 24px;
+}
+
+.personal-item.marcado .personal-num {
+  color: var(--c-verde);
+}
+
+.personal-nombre {
+  color: var(--c-blanco);
+  font-size: 12px;
+  flex: 1;
+}
+
+/* ============================================================
+   MONTACARGAS (en Configuración)
+   ============================================================ */
+.montacarga-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--c-gris);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.montacarga-row strong {
+  color: var(--c-blanco);
+  font-size: 13px;
+}
+
+.estado-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.estado-badge.estado-operativo {
+  background: var(--c-verde);
+  color: #173404;
+}
+
+.estado-badge.estado-mantenimiento {
+  background: var(--c-naranja);
+  color: #4A1B0C;
+}
+
+.estado-badge.estado-base-oig {
+  background: var(--c-amarillo);
+  color: #412402;
+}
