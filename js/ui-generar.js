@@ -39,6 +39,9 @@ const UIGenerar = {
     // Render inicial de slots de imágenes
     this._renderizarSlotsImagenes(6);
 
+    // Inicializar selector de personal
+    UIPersonal.init();
+
     this.refrescarPanelConfig();
   },
 
@@ -343,13 +346,56 @@ const UIGenerar = {
       };
     });
 
+    // ============================================================
+    // PERSONAL ASISTENTE — array de { numero, nombre } seleccionados
+    // ============================================================
+    const personalAsistente = UIPersonal.obtenerSeleccionados();
+
+    // Total personal disponible (para mostrar "X de Y asistieron")
+    const personalTotal = DatosCache.filas('personal')
+      .map(r => ({
+        numero: parseInt(r['N°']),
+        nombre: String(r['NOMBRES Y APELLIDOS'] || '').trim()
+      }))
+      .filter(p => p.numero && p.nombre);
+
+    // ============================================================
+    // HORÓMETRO — calcular para el rango del reporte
+    // ============================================================
+    let fDesdeHoro, fHastaHoro;
+    if (tipo === 'diario') {
+      fDesdeHoro = FechaUtil.parseLocal(document.getElementById('cfg-fecha-diaria').value);
+      fHastaHoro = fDesdeHoro;
+    } else if (tipo === 'semanal') {
+      const p = datos._periodo;
+      fDesdeHoro = p.lunes; fHastaHoro = p.domingo;
+    } else if (tipo === 'mensual') {
+      const [anio, mes] = document.getElementById('cfg-mes').value.split('-').map(Number);
+      fDesdeHoro = FechaUtil.local(anio, mes, 1);
+      fHastaHoro = new Date(anio, mes, 0);
+    } else if (tipo === 'rango') {
+      fDesdeHoro = FechaUtil.parseLocal(document.getElementById('cfg-desde').value);
+      fHastaHoro = FechaUtil.parseLocal(document.getElementById('cfg-hasta').value);
+    } else if (tipo === 'avance') {
+      const r = datos._periodo;
+      fDesdeHoro = r.min; fHastaHoro = r.max;
+    }
+
+    const horometroDatos = Horometro.calcular(fDesdeHoro, fHastaHoro);
+    const estadosMontac = Prefs.getEstadoMontacargas();
+
     return {
       tipoReporte: tipo,
       datos, kpis, acumulados,
       periodoTitulo, periodoSubtitulo, fechasStr,
       imagenes,
       incluirFotos,
-      preparadoPor
+      preparadoPor,
+      // Nuevos
+      personalAsistente,
+      personalTotal,
+      horometroDatos,
+      estadosMontacarga: estadosMontac
     };
   },
 

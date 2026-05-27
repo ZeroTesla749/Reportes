@@ -104,6 +104,8 @@ const DatosCache = {
   recepcion: null,  // { headers, filas, fila_header }
   estiba:    null,
   despacho:  null,
+  personal:  null,  // Hoja con N° y NOMBRES Y APELLIDOS
+  horometro: null,  // Hoja con N°, FECHA, HORO. INICIAL, HORO. FINAL, MONTACARGA
   ultimaCarga: null,
 
   async cargar(forzar = false) {
@@ -114,6 +116,8 @@ const DatosCache = {
     this.recepcion = todo.recepcion;
     this.estiba    = todo.estiba;
     this.despacho  = todo.despacho;
+    this.personal  = todo.personal  || { headers: [], filas: [] };
+    this.horometro = todo.horometro || { headers: [], filas: [] };
     this.ultimaCarga = new Date();
     return this;
   },

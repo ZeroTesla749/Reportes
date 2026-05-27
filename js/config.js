@@ -40,8 +40,16 @@ const CONFIG = {
   hojas: {
     recepcion: 'BASE_LAGUNA_CONSOLIDADO',
     estiba:    'BASE_LAGUNA_CONTROL DE ESTIBADO',
-    despacho:  'BASE_LAGUNA_DESPACHO'
+    despacho:  'BASE_LAGUNA_DESPACHO',
+    personal:  'PERSONAL',
+    horometro: 'HOROMETRO'
   },
+
+  // Montacargas que registramos
+  montacargas: ['HANGCHA', 'ZOMLION'],
+
+  // Estados posibles del montacarga (en Configuración)
+  estadosMontacarga: ['OPERATIVO', 'MANTENIMIENTO', 'BASE OIG'],
 
   // ============================================================
   // CATÁLOGO DE MATERIALES (extraído del Excel original)
@@ -108,6 +116,8 @@ const Prefs = {
   KEY_URL:          'reportes_laguna_url_api',
   KEY_ETIQUETAS:    'reportes_laguna_etiquetas',
   KEY_PREPARADO:    'reportes_laguna_preparado_por',
+  KEY_MONTAC_ESTADO: 'reportes_laguna_montac_estado',
+  KEY_ASISTENCIA:   'reportes_laguna_asistencia_guardada',
 
   // Leer/escribir URL del Apps Script
   getUrlApi() {
@@ -138,5 +148,40 @@ const Prefs = {
   },
   setPreparadoPor(nombre) {
     localStorage.setItem(this.KEY_PREPARADO, nombre);
+  },
+
+  // Estado de cada montacarga
+  // Formato: { HANGCHA: 'OPERATIVO', ZOMLION: 'MANTENIMIENTO' }
+  getEstadoMontacargas() {
+    const raw = localStorage.getItem(this.KEY_MONTAC_ESTADO);
+    if (!raw) {
+      return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' };
+    }
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' };
+    }
+  },
+  setEstadoMontacargas(obj) {
+    localStorage.setItem(this.KEY_MONTAC_ESTADO, JSON.stringify(obj));
+  },
+
+  // Asistencia marcada (array de N° de personal)
+  // Formato: [1, 3, 5, 7, ...]  (los N° de la hoja PERSONAL)
+  getAsistenciaMarcada() {
+    const raw = localStorage.getItem(this.KEY_ASISTENCIA);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  },
+  setAsistenciaMarcada(arr) {
+    localStorage.setItem(this.KEY_ASISTENCIA, JSON.stringify(arr));
+  },
+  limpiarAsistencia() {
+    localStorage.removeItem(this.KEY_ASISTENCIA);
   }
 };

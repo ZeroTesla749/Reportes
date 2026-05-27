@@ -49,6 +49,16 @@ const GeneradorPPT = {
     // Aparece en todos los tipos de reporte
     this._slideIndicadoresAcumulados(pres, opciones);
 
+    // NUEVA SLIDE — Personal asistente
+    if (opciones.personalTotal && opciones.personalTotal.length > 0) {
+      this._slidePersonal(pres, opciones);
+    }
+
+    // NUEVA SLIDE — Horómetro de montacargas
+    if (opciones.horometroDatos) {
+      this._slideHorometro(pres, opciones);
+    }
+
     this._slideConclusiones(pres, opciones);
 
     if (opciones.incluirFotos && opciones.imagenes && opciones.imagenes.length > 0) {
@@ -1131,6 +1141,417 @@ const GeneradorPPT = {
     });
     slide.addText('AIB', {
       x: chartW - 1.05, y: leyY - 0.04, w: 0.8, h: 0.22,
+      fontSize: 9, color: this.C.gris, fontFace: 'Calibri'
+    });
+  },
+
+  // ============================================================
+  // SLIDE: PERSONAL ASISTENTE
+  // ============================================================
+  _slidePersonal(pres, opt) {
+    const slide = pres.addSlide();
+    slide.background = { color: this.C.blanco };
+
+    // Encabezado oscuro
+    slide.addShape('rect', {
+      x: 0, y: 0, w: 13.33, h: 0.8,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addShape('rect', {
+      x: 0, y: 0.8, w: 13.33, h: 0.06,
+      fill: { color: this.C.verde }, line: { color: this.C.verde }
+    });
+    slide.addText('PERSONAL ASISTENTE', {
+      x: 0.35, y: 0.12, w: 9.5, h: 0.55,
+      fontSize: 18, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    slide.addText(opt.periodoTitulo, {
+      x: 9.5, y: 0.12, w: 3.6, h: 0.55,
+      fontSize: 13, color: this.C.amarillo,
+      fontFace: 'Calibri', align: 'right', valign: 'middle'
+    });
+
+    const asistentes = opt.personalAsistente || [];
+    const total = opt.personalTotal || [];
+    const totAsist = asistentes.length;
+    const totDisp = total.length;
+    const pctAsist = totDisp > 0 ? (totAsist / totDisp * 100) : 0;
+
+    // Sub-encabezado con conteo y barra
+    slide.addText(
+      `${totAsist} de ${totDisp} personas asistieron en este período  ·  ${pctAsist.toFixed(0)}%`,
+      {
+        x: 0.35, y: 1.0, w: 12.6, h: 0.4,
+        fontSize: 13, color: this.C.gris, bold: true,
+        fontFace: 'Calibri', valign: 'middle'
+      }
+    );
+
+    // Barra de progreso
+    slide.addShape('rect', {
+      x: 0.35, y: 1.45, w: 12.6, h: 0.3,
+      fill: { color: 'E0E0E0' }, line: { color: 'E0E0E0' }
+    });
+    if (pctAsist > 0) {
+      slide.addShape('rect', {
+        x: 0.35, y: 1.45, w: 12.6 * pctAsist / 100, h: 0.3,
+        fill: { color: this.C.verde }, line: { color: this.C.verde }
+      });
+    }
+
+    // Tabla de asistentes
+    if (totAsist === 0) {
+      slide.addText('Sin personal marcado como asistente para este período.', {
+        x: 0.35, y: 2.5, w: 12.6, h: 0.5,
+        fontSize: 14, color: this.C.txtGris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      return;
+    }
+
+    // Ordenar por número de personal
+    const ordenados = [...asistentes].sort((a, b) => a.numero - b.numero);
+
+    // Decisión de layout: si caben en 1 columna (hasta 15), 1 col; sino 2 cols
+    const usar2Cols = ordenados.length > 15;
+    const tablaY = 2.0;
+
+    if (usar2Cols) {
+      // 2 columnas
+      const colAncho = 6.2;
+      const colW1 = 0.35;
+      const colW2 = 0.35 + 6.6;
+      const filas1 = ordenados.slice(0, Math.ceil(ordenados.length / 2));
+      const filas2 = ordenados.slice(Math.ceil(ordenados.length / 2));
+
+      this._tablaPersonal(slide, filas1, colW1, tablaY, colAncho);
+      this._tablaPersonal(slide, filas2, colW2, tablaY, colAncho);
+    } else {
+      // 1 columna grande
+      this._tablaPersonal(slide, ordenados, 1.7, tablaY, 9.9);
+    }
+  },
+
+  /**
+   * Helper: renderiza una tabla de personal en una columna.
+   */
+  _tablaPersonal(slide, personas, x, y, w) {
+    // Header
+    slide.addShape('rect', {
+      x, y, w, h: 0.4,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addText('N°', {
+      x: x + 0.05, y, w: 0.7, h: 0.4,
+      fontSize: 10, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', align: 'center', valign: 'middle'
+    });
+    slide.addText('NOMBRES Y APELLIDOS', {
+      x: x + 0.8, y, w: w - 0.85, h: 0.4,
+      fontSize: 10, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+
+    // Filas
+    const rowH = 0.32;
+    personas.forEach((p, i) => {
+      const rowY = y + 0.4 + i * rowH;
+      const bg = (i % 2 === 0) ? this.C.blanco : 'F5F5F5';
+      slide.addShape('rect', {
+        x, y: rowY, w, h: rowH,
+        fill: { color: bg }, line: { color: this.C.borde, w: 0.25 }
+      });
+      slide.addText(String(p.numero), {
+        x: x + 0.05, y: rowY, w: 0.7, h: rowH,
+        fontSize: 10, color: this.C.negro,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      slide.addText(p.nombre, {
+        x: x + 0.8, y: rowY, w: w - 0.85, h: rowH,
+        fontSize: 10, color: this.C.negro,
+        fontFace: 'Calibri', valign: 'middle'
+      });
+    });
+  },
+
+  // ============================================================
+  // SLIDE: HORÓMETRO DE MONTACARGAS
+  // ============================================================
+  _slideHorometro(pres, opt) {
+    const slide = pres.addSlide();
+    slide.background = { color: this.C.blanco };
+
+    // Encabezado oscuro
+    slide.addShape('rect', {
+      x: 0, y: 0, w: 13.33, h: 0.8,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addShape('rect', {
+      x: 0, y: 0.8, w: 13.33, h: 0.06,
+      fill: { color: this.C.amarillo }, line: { color: this.C.amarillo }
+    });
+    slide.addText('HORÓMETRO DE MONTACARGAS', {
+      x: 0.35, y: 0.12, w: 9.5, h: 0.55,
+      fontSize: 18, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    slide.addText(opt.periodoTitulo, {
+      x: 9.5, y: 0.12, w: 3.6, h: 0.55,
+      fontSize: 13, color: this.C.amarillo,
+      fontFace: 'Calibri', align: 'right', valign: 'middle'
+    });
+
+    const h = opt.horometroDatos || {};
+    const periodo = h.periodo || {};
+    const total = h.total || {};
+    const estados = opt.estadosMontacarga || {};
+
+    const hangchaP = periodo.HANGCHA || { horas: 0, dias: 0, registros: 0 };
+    const zomlionP = periodo.ZOMLION || { horas: 0, dias: 0, registros: 0 };
+    const hangchaT = total.HANGCHA || { horas: 0, horometroActual: 0, diasOperativos: 0 };
+    const zomlionT = total.ZOMLION || { horas: 0, horometroActual: 0, diasOperativos: 0 };
+
+    // ============================================================
+    // 4 KPIs principales arriba
+    // ============================================================
+    const totalPeriodoHoras = hangchaP.horas + zomlionP.horas;
+    const totalProyectoHoras = hangchaT.horas + zomlionT.horas;
+    const diasUnicos = Math.max(hangchaP.dias, zomlionP.dias);
+    const promDia = diasUnicos > 0 ? totalPeriodoHoras / diasUnicos : 0;
+
+    const kpis = [
+      [`${totalPeriodoHoras.toFixed(1)} h`, 'Horas Totales',     'en el período',    this.C.amarillo],
+      [`${hangchaP.horas.toFixed(1)} h`,    'HANGCHA',           'horas en período', this.C.verde],
+      [`${zomlionP.horas.toFixed(1)} h`,    'ZOMLION',           'horas en período', this.C.naranja],
+      [`${promDia.toFixed(1)} h`,           'Promedio Diario',   'consolidado',      this.C.gris]
+    ];
+    const kx = 0.3, kgap = 0.15;
+    const kw = (13.33 - 2 * kx - 3 * kgap) / 4;
+    const ky = 1.05;
+    const kh = 1.15;
+    kpis.forEach((kpi, i) => {
+      const x = kx + i * (kw + kgap);
+      // Panel blanco
+      slide.addShape('rect', {
+        x, y: ky, w: kw, h: kh,
+        fill: { color: this.C.blanco },
+        line: { color: this.C.borde, width: 0.5 }
+      });
+      // Barra superior
+      slide.addShape('rect', {
+        x, y: ky, w: kw, h: 0.06,
+        fill: { color: kpi[3] }, line: { color: kpi[3] }
+      });
+      slide.addText(kpi[0], {
+        x, y: ky + 0.1, w: kw, h: 0.45,
+        fontSize: 22, bold: true, color: this.C.negro,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      slide.addText(kpi[1], {
+        x, y: ky + 0.6, w: kw, h: 0.25,
+        fontSize: 10, bold: true, color: this.C.gris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      slide.addText(kpi[2], {
+        x, y: ky + 0.85, w: kw, h: 0.25,
+        fontSize: 9, color: this.C.txtGris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+    });
+
+    // ============================================================
+    // 2 PANELES COMPARATIVOS (HANGCHA vs ZOMLION)
+    // ============================================================
+    const py = 2.5;
+    const pw = (13.33 - 2 * 0.3 - 0.3) / 2;
+    const ph = 2.0;
+
+    this._panelMontacarga(slide,
+      0.3, py, pw, ph,
+      'HANGCHA',
+      estados['HANGCHA'] || 'OPERATIVO',
+      hangchaP, hangchaT,
+      this.C.verde
+    );
+    this._panelMontacarga(slide,
+      0.3 + pw + 0.3, py, pw, ph,
+      'ZOMLION',
+      estados['ZOMLION'] || 'OPERATIVO',
+      zomlionP, zomlionT,
+      this.C.naranja
+    );
+
+    // ============================================================
+    // Gráfico de evolución (últimas 4 semanas con actividad)
+    // ============================================================
+    const semanasActivas = (h.porSemana || []).filter(s =>
+      (s.HANGCHA || 0) > 0 || (s.ZOMLION || 0) > 0
+    );
+    const ultimas4 = semanasActivas.slice(-4);
+    if (ultimas4.length > 0) {
+      this._graficoHorometroSemana(slide, ultimas4, 4.65);
+    }
+  },
+
+  /**
+   * Helper: panel individual de un montacarga
+   */
+  _panelMontacarga(slide, x, y, w, h, nombre, estado, periodo, total, color) {
+    const enMant = (estado !== 'OPERATIVO');
+    const colorBorde = enMant ? this.C.naranja : color;
+    const colorBg = enMant ? 'FFF4ED' : 'F8FCE8';
+
+    // Fondo del panel
+    slide.addShape('rect', {
+      x, y, w, h,
+      fill: { color: colorBg },
+      line: { color: colorBorde, width: 1.5 }
+    });
+    // Barra lateral de color
+    slide.addShape('rect', {
+      x, y, w: 0.1, h,
+      fill: { color: colorBorde }, line: { color: colorBorde }
+    });
+    // Nombre del montacarga
+    slide.addText(nombre, {
+      x: x + 0.2, y: y + 0.05, w: w - 0.4, h: 0.4,
+      fontSize: 18, bold: true, color: this.C.gris,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    // Badge de estado
+    slide.addShape('rect', {
+      x: x + w - 1.65, y: y + 0.13, w: 1.45, h: 0.32,
+      fill: { color: enMant ? this.C.naranja : this.C.verde },
+      line: { color: enMant ? this.C.naranja : this.C.verde }
+    });
+    slide.addText(estado, {
+      x: x + w - 1.65, y: y + 0.13, w: 1.45, h: 0.32,
+      fontSize: 9, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', align: 'center', valign: 'middle'
+    });
+
+    // 4 datos en grid 2x2
+    const dy = y + 0.55;
+    const dgrid = [
+      ['Horas en período',  `${periodo.horas.toFixed(1)} h`],
+      ['Días operativos',   `${periodo.dias}`],
+      ['Horas totales',     `${total.horas.toFixed(1)} h`],
+      ['Horómetro actual',  total.horometroActual !== null ? `${total.horometroActual.toFixed(0)} h` : '—']
+    ];
+    const dw = (w - 0.5) / 2;
+    const dh = (h - 0.7) / 2;
+    dgrid.forEach((dat, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const dx = x + 0.2 + col * (dw + 0.1);
+      const dyy = dy + row * (dh + 0.05);
+      slide.addText(dat[0], {
+        x: dx, y: dyy, w: dw, h: 0.22,
+        fontSize: 9, color: this.C.txtGris,
+        fontFace: 'Calibri', valign: 'middle'
+      });
+      slide.addText(dat[1], {
+        x: dx, y: dyy + 0.22, w: dw, h: 0.4,
+        fontSize: 17, bold: true, color: this.C.negro,
+        fontFace: 'Calibri', valign: 'middle'
+      });
+    });
+  },
+
+  /**
+   * Helper: gráfico de barras horas por semana (HANGCHA vs ZOMLION)
+   */
+  _graficoHorometroSemana(slide, semanas, yTop) {
+    slide.addText('EVOLUCIÓN HORAS POR SEMANA', {
+      x: 0.3, y: yTop, w: 13, h: 0.3,
+      fontSize: 12, bold: true, color: this.C.gris,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+
+    const chartY = yTop + 0.35;
+    const chartH = 1.7;
+    const chartX = 0.3;
+    const chartW = 13;
+
+    // Línea base
+    slide.addShape('line', {
+      x: chartX + 0.3, y: chartY + chartH,
+      w: chartW - 0.5, h: 0,
+      line: { color: this.C.gris, width: 1 }
+    });
+
+    const maxH = Math.max(
+      ...semanas.flatMap(s => [s.HANGCHA || 0, s.ZOMLION || 0]),
+      1
+    );
+
+    const nSem = semanas.length;
+    const slotW = (chartW - 0.6) / nSem;
+    const barW = slotW * 0.22;
+    const gap = slotW * 0.06;
+
+    semanas.forEach((s, i) => {
+      const slotX = chartX + 0.5 + i * slotW;
+      const hH = s.HANGCHA || 0;
+      const hZ = s.ZOMLION || 0;
+      const hBarHangcha = (hH / maxH) * chartH;
+      const hBarZomlion = (hZ / maxH) * chartH;
+
+      // HANGCHA (verde)
+      if (hH > 0) {
+        slide.addShape('rect', {
+          x: slotX, y: chartY + chartH - hBarHangcha,
+          w: barW, h: hBarHangcha,
+          fill: { color: this.C.verde }, line: { color: this.C.verde }
+        });
+        slide.addText(hH.toFixed(1), {
+          x: slotX - 0.1, y: chartY + chartH - hBarHangcha - 0.25,
+          w: barW + 0.2, h: 0.22,
+          fontSize: 10, bold: true, color: this.C.gris,
+          fontFace: 'Calibri', align: 'center'
+        });
+      }
+      // ZOMLION (naranja)
+      const bx2 = slotX + barW + gap;
+      if (hZ > 0) {
+        slide.addShape('rect', {
+          x: bx2, y: chartY + chartH - hBarZomlion,
+          w: barW, h: hBarZomlion,
+          fill: { color: this.C.naranja }, line: { color: this.C.naranja }
+        });
+        slide.addText(hZ.toFixed(1), {
+          x: bx2 - 0.1, y: chartY + chartH - hBarZomlion - 0.25,
+          w: barW + 0.2, h: 0.22,
+          fontSize: 10, bold: true, color: this.C.gris,
+          fontFace: 'Calibri', align: 'center'
+        });
+      }
+      // Etiqueta semana
+      slide.addText(`S${s.semana}`, {
+        x: slotX - 0.2, y: chartY + chartH + 0.05,
+        w: barW * 2 + gap + 0.4, h: 0.3,
+        fontSize: 11, bold: true, color: this.C.gris,
+        fontFace: 'Calibri', align: 'center'
+      });
+    });
+
+    // Leyenda
+    const leyY = chartY + chartH + 0.4;
+    slide.addShape('rect', {
+      x: chartW - 2.7, y: leyY, w: 0.2, h: 0.15,
+      fill: { color: this.C.verde }, line: { color: this.C.verde }
+    });
+    slide.addText('HANGCHA', {
+      x: chartW - 2.45, y: leyY - 0.04, w: 1, h: 0.22,
+      fontSize: 9, color: this.C.gris, fontFace: 'Calibri'
+    });
+    slide.addShape('rect', {
+      x: chartW - 1.3, y: leyY, w: 0.2, h: 0.15,
+      fill: { color: this.C.naranja }, line: { color: this.C.naranja }
+    });
+    slide.addText('ZOMLION', {
+      x: chartW - 1.05, y: leyY - 0.04, w: 1, h: 0.22,
       fontSize: 9, color: this.C.gris, fontFace: 'Calibri'
     });
   },

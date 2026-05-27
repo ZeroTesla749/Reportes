@@ -62,7 +62,12 @@ const App = {
         (DatosCache.recepcion?.filas?.length || 0) +
         (DatosCache.estiba?.filas?.length || 0) +
         (DatosCache.despacho?.filas?.length || 0);
-      this._actualizarBadge(true, `Sheet conectado · ${total} registros`);
+      const personal = DatosCache.personal?.filas?.length || 0;
+      const horometro = DatosCache.horometro?.filas?.length || 0;
+      const extras = (personal > 0 || horometro > 0)
+        ? ` + ${personal} personal + ${horometro} horómetro`
+        : '';
+      this._actualizarBadge(true, `Sheet conectado · ${total} registros${extras}`);
 
       // Refrescar UI actual
       const activa = document.querySelector('.seccion.activa');
@@ -70,7 +75,13 @@ const App = {
         const id = activa.id.replace('seccion-', '');
         if (id === 'datos')       UIDatos.renderizar();
         if (id === 'indicadores') UIIndicadores.renderizar();
-        if (id === 'generar')     UIGenerar.refrescarPanelConfig();
+        if (id === 'generar') {
+          UIGenerar.refrescarPanelConfig();
+          UIPersonal.renderizar();
+        }
+      } else {
+        // Renderizar siempre el panel de personal cuando cambian los datos
+        UIPersonal.renderizar();
       }
     } catch (err) {
       this._actualizarBadge(false, 'Error: ' + err.message);

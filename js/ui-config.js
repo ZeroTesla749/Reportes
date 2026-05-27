@@ -9,12 +9,63 @@ const UIConfig = {
     document.getElementById('config-url-api').value = Prefs.getUrlApi();
     document.getElementById('config-preparado-por').value = Prefs.getPreparadoPor();
     this._renderizarEtiquetas();
+    this._renderizarMontacargas();
 
     // Botones
     document.getElementById('btn-guardar-url').addEventListener('click', () => this._guardarUrl());
     document.getElementById('btn-guardar-preparado').addEventListener('click', () => this._guardarPreparado());
     document.getElementById('btn-agregar-etiqueta').addEventListener('click', () => this._agregarEtiqueta());
     document.getElementById('btn-guardar-etiquetas').addEventListener('click', () => this._guardarEtiquetas());
+    document.getElementById('btn-guardar-montac').addEventListener('click', () => this._guardarMontacargas());
+  },
+
+  _renderizarMontacargas() {
+    const cont = document.getElementById('config-montacargas');
+    if (!cont) return;
+    const estados = Prefs.getEstadoMontacargas();
+    let html = '';
+    CONFIG.montacargas.forEach(m => {
+      const actual = estados[m] || 'OPERATIVO';
+      html += `
+        <div class="montacarga-row">
+          <strong>${m}</strong>
+          <select id="cfg-montac-${m}" class="select-grande" data-montac="${m}">
+            ${CONFIG.estadosMontacarga.map(e =>
+              `<option value="${e}" ${actual === e ? 'selected' : ''}>${e}</option>`
+            ).join('')}
+          </select>
+          <span class="estado-badge estado-${actual.toLowerCase().replace(/ /g, '-')}" id="cfg-montac-badge-${m}">${actual}</span>
+        </div>
+      `;
+    });
+    cont.innerHTML = html;
+
+    // Listeners para actualizar el badge visual cuando cambia el select
+    CONFIG.montacargas.forEach(m => {
+      const sel = document.getElementById(`cfg-montac-${m}`);
+      if (sel) {
+        sel.addEventListener('change', e => {
+          const badge = document.getElementById(`cfg-montac-badge-${m}`);
+          if (badge) {
+            badge.textContent = e.target.value;
+            badge.className = `estado-badge estado-${e.target.value.toLowerCase().replace(/ /g, '-')}`;
+          }
+        });
+      }
+    });
+  },
+
+  _guardarMontacargas() {
+    const estados = {};
+    CONFIG.montacargas.forEach(m => {
+      const sel = document.getElementById(`cfg-montac-${m}`);
+      if (sel) estados[m] = sel.value;
+    });
+    Prefs.setEstadoMontacargas(estados);
+    const res = document.getElementById('config-montac-resultado');
+    res.textContent = '✓ Estado guardado';
+    res.className = 'resultado-info exito';
+    setTimeout(() => { res.textContent = ''; }, 2500);
   },
 
   abrirSeccion() {
