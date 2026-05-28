@@ -347,17 +347,14 @@ const UIGenerar = {
     });
 
     // ============================================================
-    // PERSONAL ASISTENTE — array de { numero, nombre } seleccionados
+    // PERSONAL OPERATIVO — puestos con cantidad
     // ============================================================
-    const personalAsistente = UIPersonal.obtenerSeleccionados();
-
-    // Total personal disponible (para mostrar "X de Y asistieron")
-    const personalTotal = DatosCache.filas('personal')
+    const personalPuestos = DatosCache.filas('personal')
       .map(r => ({
-        numero: parseInt(r['N°']),
-        nombre: String(r['NOMBRES Y APELLIDOS'] || '').trim()
+        cantidad: parseInt(r['N°']) || 0,
+        puesto: String(r['NOMBRES Y APELLIDOS'] || '').trim()
       }))
-      .filter(p => p.numero && p.nombre);
+      .filter(p => p.puesto);
 
     // ============================================================
     // HORÓMETRO — calcular para el rango del reporte
@@ -392,8 +389,7 @@ const UIGenerar = {
       incluirFotos,
       preparadoPor,
       // Nuevos
-      personalAsistente,
-      personalTotal,
+      personalPuestos,
       horometroDatos,
       estadosMontacarga: estadosMontac
     };

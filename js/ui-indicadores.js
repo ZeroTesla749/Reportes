@@ -17,7 +17,7 @@ const UIIndicadores = {
     }
 
     const a = KPIs.acumuladosProyecto();
-    const tubosNeto = a.tubos_casing - a.despacho_tubos;
+    const tubosNeto = a.tubos_casing - (a.despacho_tubos_casing || 0);
     const pendiente = a.tubos_casing - a.estiba_tubos;
     const avance = a.tubos_casing > 0 ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
 

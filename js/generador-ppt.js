@@ -46,15 +46,18 @@ const GeneradorPPT = {
     this._slideInventario(pres, opciones);
 
     // NUEVA SLIDE — Indicadores acumulados del proyecto
-    // Aparece en todos los tipos de reporte
     this._slideIndicadoresAcumulados(pres, opciones);
 
-    // NUEVA SLIDE — Personal asistente
-    if (opciones.personalTotal && opciones.personalTotal.length > 0) {
+    // NUEVAS SLIDES — Inventario real por código (CASING y AIB)
+    this._slideInventarioCodigo(pres, opciones, 'CASING');
+    this._slideInventarioCodigo(pres, opciones, 'AIB');
+
+    // SLIDE — Personal operativo (puestos)
+    if (opciones.personalPuestos && opciones.personalPuestos.length > 0) {
       this._slidePersonal(pres, opciones);
     }
 
-    // NUEVA SLIDE — Horómetro de montacargas
+    // SLIDE — Horómetro de montacargas
     if (opciones.horometroDatos) {
       this._slideHorometro(pres, opciones);
     }
@@ -591,7 +594,7 @@ const GeneradorPPT = {
       'Acumulado del proyecto', this.C.amarillo);
 
     const a = opt.acumulados;
-    const tubosNeto = a.tubos_casing - a.despacho_tubos;
+    const tubosNeto = a.tubos_casing - (a.despacho_tubos_casing || 0);
     const pendiente = a.tubos_casing - a.estiba_tubos;
     const avanceEst = a.tubos_casing > 0
       ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
@@ -1146,7 +1149,7 @@ const GeneradorPPT = {
   },
 
   // ============================================================
-  // SLIDE: PERSONAL ASISTENTE
+  // SLIDE: PERSONAL OPERATIVO (puestos con cantidad + foto)
   // ============================================================
   _slidePersonal(pres, opt) {
     const slide = pres.addSlide();
@@ -1161,7 +1164,7 @@ const GeneradorPPT = {
       x: 0, y: 0.8, w: 13.33, h: 0.06,
       fill: { color: this.C.verde }, line: { color: this.C.verde }
     });
-    slide.addText('PERSONAL ASISTENTE', {
+    slide.addText('PERSONAL OPERATIVO', {
       x: 0.35, y: 0.12, w: 9.5, h: 0.55,
       fontSize: 18, bold: true, color: this.C.blanco,
       fontFace: 'Calibri', valign: 'middle'
@@ -1172,15 +1175,12 @@ const GeneradorPPT = {
       fontFace: 'Calibri', align: 'right', valign: 'middle'
     });
 
-    const asistentes = opt.personalAsistente || [];
-    const total = opt.personalTotal || [];
-    const totAsist = asistentes.length;
-    const totDisp = total.length;
-    const pctAsist = totDisp > 0 ? (totAsist / totDisp * 100) : 0;
+    const puestos = opt.personalPuestos || [];
+    const totalPersonal = puestos.reduce((a, p) => a + p.cantidad, 0);
 
-    // Sub-encabezado con conteo y barra
+    // Sub-encabezado
     slide.addText(
-      `${totAsist} de ${totDisp} personas asistieron en este período  ·  ${pctAsist.toFixed(0)}%`,
+      `${puestos.length} puestos  ·  ${totalPersonal} personas en total`,
       {
         x: 0.35, y: 1.0, w: 12.6, h: 0.4,
         fontSize: 13, color: this.C.gris, bold: true,
@@ -1188,21 +1188,8 @@ const GeneradorPPT = {
       }
     );
 
-    // Barra de progreso
-    slide.addShape('rect', {
-      x: 0.35, y: 1.45, w: 12.6, h: 0.3,
-      fill: { color: 'E0E0E0' }, line: { color: 'E0E0E0' }
-    });
-    if (pctAsist > 0) {
-      slide.addShape('rect', {
-        x: 0.35, y: 1.45, w: 12.6 * pctAsist / 100, h: 0.3,
-        fill: { color: this.C.verde }, line: { color: this.C.verde }
-      });
-    }
-
-    // Tabla de asistentes
-    if (totAsist === 0) {
-      slide.addText('Sin personal marcado como asistente para este período.', {
+    if (puestos.length === 0) {
+      slide.addText('Sin datos de personal en la hoja PERSONAL.', {
         x: 0.35, y: 2.5, w: 12.6, h: 0.5,
         fontSize: 14, color: this.C.txtGris,
         fontFace: 'Calibri', align: 'center', valign: 'middle'
@@ -1210,68 +1197,265 @@ const GeneradorPPT = {
       return;
     }
 
-    // Ordenar por número de personal
-    const ordenados = [...asistentes].sort((a, b) => a.numero - b.numero);
+    // ============================================================
+    // Layout: tabla de puestos a la IZQUIERDA, foto a la DERECHA
+    // ============================================================
+    const tablaX = 0.35;
+    const tablaY = 1.6;
+    const tablaW = 7.0;
 
-    // Decisión de layout: si caben en 1 columna (hasta 15), 1 col; sino 2 cols
-    const usar2Cols = ordenados.length > 15;
-    const tablaY = 2.0;
+    // Header de la tabla
+    slide.addShape('rect', {
+      x: tablaX, y: tablaY, w: tablaW, h: 0.45,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addText('PUESTO', {
+      x: tablaX + 0.15, y: tablaY, w: tablaW - 1.6, h: 0.45,
+      fontSize: 12, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    slide.addText('CANTIDAD', {
+      x: tablaX + tablaW - 1.5, y: tablaY, w: 1.4, h: 0.45,
+      fontSize: 12, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', align: 'center', valign: 'middle'
+    });
 
-    if (usar2Cols) {
-      // 2 columnas
-      const colAncho = 6.2;
-      const colW1 = 0.35;
-      const colW2 = 0.35 + 6.6;
-      const filas1 = ordenados.slice(0, Math.ceil(ordenados.length / 2));
-      const filas2 = ordenados.slice(Math.ceil(ordenados.length / 2));
+    // Filas de puestos
+    const rowH = Math.min(0.5, (4.8 / Math.max(puestos.length, 1)));
+    const rowHFinal = Math.max(0.33, rowH);
+    puestos.forEach((p, i) => {
+      const rowY = tablaY + 0.45 + i * rowHFinal;
+      const bg = (i % 2 === 0) ? 'F8F8F8' : this.C.blanco;
+      slide.addShape('rect', {
+        x: tablaX, y: rowY, w: tablaW, h: rowHFinal,
+        fill: { color: bg }, line: { color: this.C.borde, w: 0.25 }
+      });
+      // Barra lateral verde
+      slide.addShape('rect', {
+        x: tablaX, y: rowY, w: 0.06, h: rowHFinal,
+        fill: { color: this.C.verde }, line: { color: this.C.verde }
+      });
+      slide.addText(p.puesto, {
+        x: tablaX + 0.2, y: rowY, w: tablaW - 1.7, h: rowHFinal,
+        fontSize: 11, color: this.C.negro,
+        fontFace: 'Calibri', valign: 'middle'
+      });
+      slide.addText(String(p.cantidad), {
+        x: tablaX + tablaW - 1.5, y: rowY, w: 1.4, h: rowHFinal,
+        fontSize: 13, bold: true, color: this.C.verde,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+    });
 
-      this._tablaPersonal(slide, filas1, colW1, tablaY, colAncho);
-      this._tablaPersonal(slide, filas2, colW2, tablaY, colAncho);
+    // Fila TOTAL
+    const totalY = tablaY + 0.45 + puestos.length * rowHFinal;
+    slide.addShape('rect', {
+      x: tablaX, y: totalY, w: tablaW, h: 0.45,
+      fill: { color: this.C.amarillo }, line: { color: this.C.amarillo }
+    });
+    slide.addText('TOTAL PERSONAL', {
+      x: tablaX + 0.2, y: totalY, w: tablaW - 1.7, h: 0.45,
+      fontSize: 12, bold: true, color: '412402',
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    slide.addText(String(totalPersonal), {
+      x: tablaX + tablaW - 1.5, y: totalY, w: 1.4, h: 0.45,
+      fontSize: 15, bold: true, color: '412402',
+      fontFace: 'Calibri', align: 'center', valign: 'middle'
+    });
+
+    // ============================================================
+    // Espacio para FOTO a la derecha
+    // ============================================================
+    const fotoX = tablaX + tablaW + 0.4;
+    const fotoY = 1.6;
+    const fotoW = 13.33 - fotoX - 0.35;
+    const fotoH = 5.3;
+
+    const fotoPersonal = opt.fotoPersonal || null;
+    if (fotoPersonal && fotoPersonal.dataUrl) {
+      slide.addImage({
+        data: fotoPersonal.dataUrl,
+        x: fotoX, y: fotoY, w: fotoW, h: fotoH,
+        sizing: { type: 'cover', w: fotoW, h: fotoH }
+      });
+      slide.addShape('rect', {
+        x: fotoX, y: fotoY, w: fotoW, h: fotoH,
+        fill: { type: 'none' },
+        line: { color: this.C.verde, width: 2 }
+      });
     } else {
-      // 1 columna grande
-      this._tablaPersonal(slide, ordenados, 1.7, tablaY, 9.9);
+      // Placeholder
+      slide.addShape('rect', {
+        x: fotoX, y: fotoY, w: fotoW, h: fotoH,
+        fill: { color: 'F0F0F0' },
+        line: { color: this.C.verde, width: 1.5, dashType: 'dash' }
+      });
+      slide.addText('[ ESPACIO PARA FOTO\nDEL PERSONAL ]', {
+        x: fotoX, y: fotoY + fotoH / 2 - 0.4, w: fotoW, h: 0.8,
+        fontSize: 13, bold: true, color: this.C.txtGris,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
     }
+    slide.addText('Personal operativo en Base Laguna', {
+      x: fotoX, y: fotoY + fotoH + 0.05, w: fotoW, h: 0.3,
+      fontSize: 10, italic: true, color: this.C.txtGris,
+      fontFace: 'Calibri', align: 'center'
+    });
+  },
+
+  // ============================================================
+  // SLIDE: INVENTARIO REAL POR CÓDIGO (CASING o AIB)
+  // Stock = recibido − despachado, por cada código del catálogo
+  // ============================================================
+  _slideInventarioCodigo(pres, opt, tipoFiltro) {
+    const slide = pres.addSlide();
+    slide.background = { color: this.C.blanco };
+
+    const accent = (tipoFiltro === 'AIB') ? this.C.naranja : this.C.amarillo;
+
+    // Encabezado oscuro
+    slide.addShape('rect', {
+      x: 0, y: 0, w: 13.33, h: 0.8,
+      fill: { color: this.C.gris }, line: { color: this.C.gris }
+    });
+    slide.addShape('rect', {
+      x: 0, y: 0.8, w: 13.33, h: 0.06,
+      fill: { color: accent }, line: { color: accent }
+    });
+    slide.addText(`INVENTARIO REAL ${tipoFiltro} — POR CÓDIGO`, {
+      x: 0.35, y: 0.12, w: 9.5, h: 0.55,
+      fontSize: 18, bold: true, color: this.C.blanco,
+      fontFace: 'Calibri', valign: 'middle'
+    });
+    slide.addText('Stock acumulado del proyecto', {
+      x: 9.5, y: 0.12, w: 3.6, h: 0.55,
+      fontSize: 12, color: this.C.amarillo,
+      fontFace: 'Calibri', align: 'right', valign: 'middle'
+    });
+
+    // Calcular inventario por código
+    const inventario = this._calcularInventarioPorCodigo(tipoFiltro);
+
+    // Totales
+    const totRecibido = inventario.reduce((a, r) => a + r.recibido, 0);
+    const totDespachado = inventario.reduce((a, r) => a + r.despachado, 0);
+    const totStock = inventario.reduce((a, r) => a + r.stock, 0);
+
+    // 3 KPIs arriba
+    const unidad = (tipoFiltro === 'AIB') ? 'equipos' : 'tubos';
+    const kpis = [
+      [this._n(totRecibido),   'TOTAL RECIBIDO',   unidad, this.C.verde],
+      [this._n(totDespachado), 'TOTAL DESPACHADO', unidad, this.C.naranja],
+      [this._n(totStock),      'STOCK ACTUAL',     unidad, accent]
+    ];
+    const kw = 4.1, kh = 1.0, ky = 1.0;
+    kpis.forEach((kpi, i) => {
+      const kx = 0.35 + i * (kw + 0.2);
+      slide.addShape('rect', {
+        x: kx, y: ky, w: kw, h: kh,
+        fill: { color: this.C.blanco }, line: { color: this.C.borde, width: 0.5 }
+      });
+      slide.addShape('rect', {
+        x: kx, y: ky, w: kw, h: 0.06,
+        fill: { color: kpi[3] }, line: { color: kpi[3] }
+      });
+      slide.addText(kpi[0], {
+        x: kx, y: ky + 0.1, w: kw, h: 0.45,
+        fontSize: 24, bold: true, color: this.C.negro,
+        fontFace: 'Calibri', align: 'center', valign: 'middle'
+      });
+      slide.addText(kpi[1], {
+        x: kx, y: ky + 0.58, w: kw, h: 0.25,
+        fontSize: 11, bold: true, color: this.C.gris,
+        fontFace: 'Calibri', align: 'center'
+      });
+      slide.addText(kpi[2], {
+        x: kx, y: ky + 0.78, w: kw, h: 0.2,
+        fontSize: 9, color: this.C.txtGris,
+        fontFace: 'Calibri', align: 'center'
+      });
+    });
+
+    // Tabla: CÓDIGO | DESCRIPCIÓN | RECIBIDO | DESPACHADO | STOCK
+    const rows = [[
+      { text: 'CÓDIGO',      options: { bold: true, color: this.C.blanco, fill: this.C.gris, fontSize: 10 } },
+      { text: 'DESCRIPCIÓN', options: { bold: true, color: this.C.blanco, fill: this.C.gris, fontSize: 10 } },
+      { text: 'RECIBIDO',    options: { bold: true, color: this.C.blanco, fill: this.C.gris, fontSize: 10, align: 'center' } },
+      { text: 'DESPACHADO',  options: { bold: true, color: this.C.blanco, fill: this.C.gris, fontSize: 10, align: 'center' } },
+      { text: 'STOCK',       options: { bold: true, color: this.C.blanco, fill: this.C.gris, fontSize: 10, align: 'center' } }
+    ]];
+    inventario.forEach((r, idx) => {
+      const fill = idx % 2 === 0 ? this.C.blanco : 'F5F5F5';
+      rows.push([
+        { text: r.codigo, options: { fill, fontSize: 10, bold: true } },
+        { text: r.desc, options: { fill, fontSize: 9 } },
+        { text: this._n(r.recibido), options: { fill, fontSize: 10, align: 'center', color: '2E7D32' } },
+        { text: this._n(r.despachado), options: { fill, fontSize: 10, align: 'center', color: 'C62828' } },
+        { text: this._n(r.stock), options: { fill, fontSize: 11, align: 'center', bold: true, color: this.C.negro } }
+      ]);
+    });
+    // Fila total
+    rows.push([
+      { text: 'TOTAL', options: { bold: true, fill: accent, fontSize: 10, color: '412402' } },
+      { text: '', options: { fill: accent } },
+      { text: this._n(totRecibido), options: { bold: true, fill: accent, fontSize: 10, align: 'center', color: '412402' } },
+      { text: this._n(totDespachado), options: { bold: true, fill: accent, fontSize: 10, align: 'center', color: '412402' } },
+      { text: this._n(totStock), options: { bold: true, fill: accent, fontSize: 11, align: 'center', color: '412402' } }
+    ]);
+
+    slide.addTable(rows, {
+      x: 0.35, y: 2.25, w: 12.63,
+      colW: [1.6, 6.43, 1.5, 1.6, 1.5],
+      fontFace: 'Calibri',
+      border: { type: 'solid', pt: 0.25, color: 'E0E0E0' },
+      valign: 'middle'
+    });
   },
 
   /**
-   * Helper: renderiza una tabla de personal en una columna.
+   * Calcula el inventario por código para un tipo (CASING o AIB).
+   * Stock = recibido − despachado.
+   * Muestra TODOS los códigos del catálogo de ese tipo.
    */
-  _tablaPersonal(slide, personas, x, y, w) {
-    // Header
-    slide.addShape('rect', {
-      x, y, w, h: 0.4,
-      fill: { color: this.C.gris }, line: { color: this.C.gris }
-    });
-    slide.addText('N°', {
-      x: x + 0.05, y, w: 0.7, h: 0.4,
-      fontSize: 10, bold: true, color: this.C.blanco,
-      fontFace: 'Calibri', align: 'center', valign: 'middle'
-    });
-    slide.addText('NOMBRES Y APELLIDOS', {
-      x: x + 0.8, y, w: w - 0.85, h: 0.4,
-      fontSize: 10, bold: true, color: this.C.blanco,
-      fontFace: 'Calibri', valign: 'middle'
+  _calcularInventarioPorCodigo(tipoFiltro) {
+    const rec = DatosCache.filas('recepcion');
+    const des = DatosCache.filas('despacho');
+
+    // Normaliza código (quita ceros iniciales y espacios)
+    const normCod = (c) => String(c || '').trim().replace(/^0+/, '');
+
+    // Sumar recibido por código
+    const recibidoPorCod = {};
+    rec.forEach(r => {
+      const cod = normCod(r['CODIGO SPRING']);
+      if (!cod) return;
+      const cant = parseFloat(r['TUBOS TOTALES / TOTAL AIB']) || 0;
+      recibidoPorCod[cod] = (recibidoPorCod[cod] || 0) + cant;
     });
 
-    // Filas
-    const rowH = 0.32;
-    personas.forEach((p, i) => {
-      const rowY = y + 0.4 + i * rowH;
-      const bg = (i % 2 === 0) ? this.C.blanco : 'F5F5F5';
-      slide.addShape('rect', {
-        x, y: rowY, w, h: rowH,
-        fill: { color: bg }, line: { color: this.C.borde, w: 0.25 }
-      });
-      slide.addText(String(p.numero), {
-        x: x + 0.05, y: rowY, w: 0.7, h: rowH,
-        fontSize: 10, color: this.C.negro,
-        fontFace: 'Calibri', align: 'center', valign: 'middle'
-      });
-      slide.addText(p.nombre, {
-        x: x + 0.8, y: rowY, w: w - 0.85, h: rowH,
-        fontSize: 10, color: this.C.negro,
-        fontFace: 'Calibri', valign: 'middle'
-      });
+    // Sumar despachado por código
+    const despachadoPorCod = {};
+    des.forEach(r => {
+      const cod = normCod(r['CODIGO']);
+      if (!cod) return;
+      const cant = parseFloat(r['TOTAL DE TUBERIAS']) || 0;
+      despachadoPorCod[cod] = (despachadoPorCod[cod] || 0) + cant;
+    });
+
+    // Recorrer TODOS los códigos del catálogo de ese tipo
+    const items = Catalogo.porTipo(tipoFiltro);
+    return items.map(it => {
+      const cod = normCod(it.codigo);
+      const recibido = recibidoPorCod[cod] || 0;
+      const despachado = despachadoPorCod[cod] || 0;
+      return {
+        codigo: it.codigo,
+        desc: it.desc,
+        recibido,
+        despachado,
+        stock: recibido - despachado
+      };
     });
   },
 
@@ -1363,9 +1547,9 @@ const GeneradorPPT = {
     // ============================================================
     // 2 PANELES COMPARATIVOS (HANGCHA vs ZOMLION)
     // ============================================================
-    const py = 2.5;
+    const py = 2.45;
     const pw = (13.33 - 2 * 0.3 - 0.3) / 2;
-    const ph = 2.0;
+    const ph = 2.5;
 
     this._panelMontacarga(slide,
       0.3, py, pw, ph,
@@ -1390,7 +1574,7 @@ const GeneradorPPT = {
     );
     const ultimas4 = semanasActivas.slice(-4);
     if (ultimas4.length > 0) {
-      this._graficoHorometroSemana(slide, ultimas4, 4.65);
+      this._graficoHorometroSemana(slide, ultimas4, 5.15);
     }
   },
 
@@ -1431,29 +1615,40 @@ const GeneradorPPT = {
       fontFace: 'Calibri', align: 'center', valign: 'middle'
     });
 
-    // 4 datos en grid 2x2
+    // 6 datos en grid 2x3 (agregamos combustible y consumo)
     const dy = y + 0.55;
+    const nivelStr = (total.nivelCombustible !== null && total.nivelCombustible !== undefined)
+      ? `${total.nivelCombustible.toFixed(0)}%`
+      : '—';
+    const consumoStr = (total.consumoPorHora !== null && total.consumoPorHora !== undefined)
+      ? `${total.consumoPorHora.toFixed(1)}%/h`
+      : '—';
     const dgrid = [
       ['Horas en período',  `${periodo.horas.toFixed(1)} h`],
-      ['Días operativos',   `${periodo.dias}`],
       ['Horas totales',     `${total.horas.toFixed(1)} h`],
-      ['Horómetro actual',  total.horometroActual !== null ? `${total.horometroActual.toFixed(0)} h` : '—']
+      ['Días operativos',   `${periodo.dias}`],
+      ['Horómetro actual',  total.horometroActual !== null ? `${total.horometroActual.toFixed(0)} h` : '—'],
+      ['Nivel combustible', nivelStr],
+      ['Consumo promedio',  consumoStr]
     ];
     const dw = (w - 0.5) / 2;
-    const dh = (h - 0.7) / 2;
+    const dh = (h - 0.7) / 3;
     dgrid.forEach((dat, i) => {
       const col = i % 2;
       const row = Math.floor(i / 2);
       const dx = x + 0.2 + col * (dw + 0.1);
-      const dyy = dy + row * (dh + 0.05);
+      const dyy = dy + row * (dh + 0.03);
       slide.addText(dat[0], {
-        x: dx, y: dyy, w: dw, h: 0.22,
+        x: dx, y: dyy, w: dw, h: 0.2,
         fontSize: 9, color: this.C.txtGris,
         fontFace: 'Calibri', valign: 'middle'
       });
+      // Resaltar combustible en color
+      const esColor = (i >= 4);
       slide.addText(dat[1], {
-        x: dx, y: dyy + 0.22, w: dw, h: 0.4,
-        fontSize: 17, bold: true, color: this.C.negro,
+        x: dx, y: dyy + 0.18, w: dw, h: 0.32,
+        fontSize: 15, bold: true,
+        color: esColor ? (enMant ? this.C.naranja : this.C.verde) : this.C.negro,
         fontFace: 'Calibri', valign: 'middle'
       });
     });

@@ -35,12 +35,25 @@ const Horometro = {
       const horoIni = parseFloat(r['HORO. INICIAL']) || parseFloat(r['HORO INICIAL']) || 0;
       const horoFin = parseFloat(r['HORO. FINAL']) || parseFloat(r['HORO FINAL']) || 0;
       const horas = Math.max(0, horoFin - horoIni);
+      // Nivel de combustible: viene como "25%" o "100%" o número
+      let nivelComb = r['NIVEL COMBUSTIBLE'];
+      if (typeof nivelComb === 'string') {
+        nivelComb = parseFloat(nivelComb.replace('%', '').trim());
+      } else {
+        nivelComb = parseFloat(nivelComb);
+      }
+      if (isNaN(nivelComb)) nivelComb = null;
+      // Si viene como fracción (0.25), convertir a porcentaje
+      if (nivelComb !== null && nivelComb > 0 && nivelComb <= 1) {
+        nivelComb = nivelComb * 100;
+      }
       return {
         fecha: LectorDatos.parseFecha(r['FECHA']),
         montacarga: normalizar(r['MONTACARGA']),
         horoIni,
         horoFin,
-        horas
+        horas,
+        nivelComb
       };
     }).filter(r => r.fecha && r.montacarga);
 
@@ -77,12 +90,29 @@ const Horometro = {
         ? Math.max(...filas.map(r => r.horoFin))
         : null;
       const fechas = filas.map(r => r.fecha).sort((a, b) => a - b);
+
+      // Nivel de combustible actual = último registro con nivel (por fecha)
+      const filasConNivel = filas
+        .filter(r => r.nivelComb !== null)
+        .sort((a, b) => a.fecha - b.fecha);
+      const nivelActual = filasConNivel.length > 0
+        ? filasConNivel[filasConNivel.length - 1].nivelComb
+        : null;
+
+      // Consumo promedio = % combustible / horas trabajadas
+      // (cuánto % de tanque gasta por hora de trabajo)
+      const consumoPorHora = horas > 0 && nivelActual !== null
+        ? null  // se calcula abajo de forma más robusta
+        : null;
+
       total[m] = {
         horas,
         horometroActual,
         primerRegistro: fechas[0] || null,
         ultimoRegistro: fechas[fechas.length - 1] || null,
-        diasOperativos: new Set(filas.map(r => r.fecha.toDateString())).size
+        diasOperativos: new Set(filas.map(r => r.fecha.toDateString())).size,
+        nivelCombustible: nivelActual,
+        consumoPorHora: this._calcConsumo(filas)
       };
     });
 
@@ -99,5 +129,44 @@ const Horometro = {
     const porSemana = Object.values(semanasMap).sort((a, b) => a.semana - b.semana);
 
     return { periodo, total, porSemana };
+  },
+
+  /**
+   * Calcula el consumo promedio de combustible (% por hora trabajada).
+   *
+   * Lógica: cuando el nivel BAJA entre un registro y el siguiente,
+   * ese descenso dividido entre las horas trabajadas da el % consumido/hora.
+   * Cuando el nivel SUBE (reabastecimiento), se ignora ese tramo.
+   *
+   * Si no hay suficientes datos, usa una estimación simple:
+   * (suma de descensos de nivel) / (horas en esos tramos).
+   */
+  _calcConsumo(filas) {
+    const ordenadas = [...filas]
+      .filter(r => r.nivelComb !== null)
+      .sort((a, b) => a.fecha - b.fecha);
+
+    if (ordenadas.length < 2) {
+      // Solo 1 registro: no podemos calcular consumo entre tramos.
+      return null;
+    }
+
+    let totalConsumido = 0;  // % total que bajó
+    let totalHoras = 0;      // horas en esos tramos
+
+    for (let i = 1; i < ordenadas.length; i++) {
+      const prev = ordenadas[i - 1];
+      const curr = ordenadas[i];
+      const baja = prev.nivelComb - curr.nivelComb;  // positivo si bajó
+      if (baja > 0) {
+        // Hubo consumo. Las horas del tramo: las horas del registro actual
+        totalConsumido += baja;
+        totalHoras += curr.horas > 0 ? curr.horas : 0;
+      }
+      // Si subió (reabastecimiento), ignoramos
+    }
+
+    if (totalHoras <= 0) return null;
+    return totalConsumido / totalHoras;  // % por hora
   }
 };

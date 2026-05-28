@@ -50,6 +50,23 @@ const KPIs = {
     const desTubos  = this._sum(des, 'TOTAL DE TUBERIAS');
     const desMin    = this._sum(des, 'TIEMPO') * 60;  // horas → min
 
+    // Clasificar despachos por tipo usando el CÓDIGO (290xxx=AIB, 440xxx=CASING)
+    const esTipoDespacho = (r) => {
+      const cod = String(r['CODIGO'] || '').trim().replace(/^0+/, '');
+      const item = Catalogo.buscar(cod);
+      if (item) return item.tipo;
+      // Fallback: por descripción
+      const desc = String(r['DESCRIPCION'] || '').toUpperCase();
+      if (desc.includes('AIB') || desc.includes('UNIDAD BOMBEO') || desc.includes('BOMBEO')) {
+        return 'AIB';
+      }
+      return 'CASING';  // por defecto
+    };
+    const desCasing = des.filter(r => esTipoDespacho(r) === 'CASING');
+    const desAib    = des.filter(r => esTipoDespacho(r) === 'AIB');
+    const desTubosCasing = this._sum(desCasing, 'TOTAL DE TUBERIAS');
+    const desTubosAib    = this._sum(desAib, 'TOTAL DE TUBERIAS');
+
     return {
       // Recepción
       camiones_unicos:    camionesUnicos,
@@ -74,7 +91,9 @@ const KPIs = {
       despacho_ops:   desOps,
       despacho_actas: desActas,
       despacho_tubos: desTubos,
-      despacho_min:   desMin
+      despacho_min:   desMin,
+      despacho_tubos_casing: desTubosCasing,  // NUEVO: solo casing
+      despacho_tubos_aib:    desTubosAib      // NUEVO: solo AIB
     };
   },
 
