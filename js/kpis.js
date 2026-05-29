@@ -66,6 +66,10 @@ const KPIs = {
     const desAib    = des.filter(r => esTipoDespacho(r) === 'AIB');
     const desTubosCasing = this._sum(desCasing, 'TOTAL DE TUBERIAS');
     const desTubosAib    = this._sum(desAib, 'TOTAL DE TUBERIAS');
+    const desActasCasing = new Set(desCasing.map(r => r['N° DE ACTA']).filter(a => a)).size;
+    const desActasAib    = new Set(desAib.map(r => r['N° DE ACTA']).filter(a => a)).size;
+    const desOpsCasing   = desCasing.length;
+    const desOpsAib      = desAib.length;
 
     return {
       // Recepción
@@ -87,13 +91,18 @@ const KPIs = {
       estiba_dias:     diasEstiba,
       estiba_montac:   montacargas,
       estiba_racks:    racks,
-      // Despacho
+      // Despacho - totales mezclados (para compatibilidad)
       despacho_ops:   desOps,
       despacho_actas: desActas,
       despacho_tubos: desTubos,
       despacho_min:   desMin,
-      despacho_tubos_casing: desTubosCasing,  // NUEVO: solo casing
-      despacho_tubos_aib:    desTubosAib      // NUEVO: solo AIB
+      // Despacho - separado por tipo (lo nuevo, lo correcto)
+      despacho_tubos_casing: desTubosCasing,
+      despacho_tubos_aib:    desTubosAib,
+      despacho_actas_casing: desActasCasing,
+      despacho_actas_aib:    desActasAib,
+      despacho_ops_casing:   desOpsCasing,
+      despacho_ops_aib:      desOpsAib
     };
   },
 

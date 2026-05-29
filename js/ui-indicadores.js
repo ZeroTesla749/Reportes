@@ -18,6 +18,7 @@ const UIIndicadores = {
 
     const a = KPIs.acumuladosProyecto();
     const tubosNeto = a.tubos_casing - (a.despacho_tubos_casing || 0);
+    const aibNeto = a.equipos_aib - (a.despacho_tubos_aib || 0);
     const pendiente = a.tubos_casing - a.estiba_tubos;
     const avance = a.tubos_casing > 0 ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
 
@@ -80,7 +81,7 @@ const UIIndicadores = {
           <div class="kpi-bar"></div>
           <div class="kpi-valor">${a.despacho_actas}</div>
           <div class="kpi-label">ACTAS DE DESPACHO</div>
-          <div class="kpi-sublabel">${a.despacho_tubos} tubos</div>
+          <div class="kpi-sublabel">${this._n(a.despacho_tubos_casing || 0)} casing · ${a.despacho_tubos_aib || 0} AIB</div>
         </div>
         <div class="kpi-card naranja">
           <div class="kpi-bar"></div>
@@ -96,12 +97,12 @@ const UIIndicadores = {
           <div>
             <div style="color: var(--c-txt-gris); font-size: 11px;">Tubos casing en patio</div>
             <div style="color: var(--c-verde); font-size: 22px; font-weight: 600;">${this._n(tubosNeto)}</div>
-            <div style="color: var(--c-txt-gris); font-size: 11px;">recibido − despachado</div>
+            <div style="color: var(--c-txt-gris); font-size: 11px;">${this._n(a.tubos_casing)} recibidos − ${this._n(a.despacho_tubos_casing || 0)} despachados</div>
           </div>
           <div>
             <div style="color: var(--c-txt-gris); font-size: 11px;">Equipos AIB en patio</div>
-            <div style="color: var(--c-naranja); font-size: 22px; font-weight: 600;">${a.equipos_aib}</div>
-            <div style="color: var(--c-txt-gris); font-size: 11px;">total recibidos</div>
+            <div style="color: var(--c-naranja); font-size: 22px; font-weight: 600;">${this._n(aibNeto)}</div>
+            <div style="color: var(--c-txt-gris); font-size: 11px;">${a.equipos_aib} recibidos − ${a.despacho_tubos_aib || 0} despachados</div>
           </div>
         </div>
       </div>

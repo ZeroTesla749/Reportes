@@ -203,12 +203,23 @@ const GeneradorPPT = {
       fontSize: 14, color: 'D0D0D0', fontFace: 'Calibri'
     });
 
-    // 4 KPIs principales
+    // 4 KPIs principales (despacho separado por tipo)
     const k = opt.kpis;
+    const desCasing = k.despacho_tubos_casing || 0;
+    const desAib    = k.despacho_tubos_aib || 0;
+    // Texto de despacho: si hay solo uno, mostrar uno; si hay ambos, mostrar combinado
+    let despachoTxt;
+    if (desCasing > 0 && desAib > 0) {
+      despachoTxt = `${this._n(desCasing)}+${desAib}`;
+    } else if (desAib > 0) {
+      despachoTxt = `${desAib} AIB`;
+    } else {
+      despachoTxt = String(desCasing);
+    }
     const kpis = [
       [String(k.equipos_aib || 0),     'EQUIPOS AIB RECIBIDOS', this.C.verde],
       [this._n(k.estiba_tubos),        'TUBOS ESTIBADOS',       this.C.amarillo],
-      [String(k.despacho_tubos || 0),  'TUBOS DESPACHADOS',     this.C.naranja],
+      [despachoTxt,                    'DESPACHADO (CASING+AIB)', this.C.naranja],
       [String(k.despacho_actas || 0),  'ACTAS DE DESPACHO',     this.C.verde]
     ];
     const mleft = 0.5, kgap = 0.15;
@@ -276,11 +287,16 @@ const GeneradorPPT = {
     const k = opt.kpis;
 
     // 5 KPIs comparativos
+    const desCasingD = k.despacho_tubos_casing || 0;
+    const desAibD    = k.despacho_tubos_aib || 0;
+    const desTxtD = (desCasingD > 0 && desAibD > 0)
+      ? `${this._n(desCasingD)}+${desAibD}`
+      : (desAibD > 0 ? `${desAibD} AIB` : String(desCasingD));
     const kpis = [
       [String(k.camiones_unicos || 0), 'Camiones',          this.C.amarillo],
       [this._n(k.tubos_casing),        'Tubos Casing',      this.C.verde],
       [String(k.equipos_aib || 0),     'Equipos AIB',       this.C.naranja],
-      [String(k.despacho_tubos || 0),  'Tubos Despachados', this.C.amarillo],
+      [desTxtD,                        'Despachado',        this.C.amarillo],
       [k.eficiencia_general.toFixed(1) + '%', 'Eficiencia', this.C.verde]
     ];
     const mleft = 0.2, kgap = 0.12;
@@ -299,6 +315,18 @@ const GeneradorPPT = {
       fontSize: 12, bold: true, color: this.C.blanco, fontFace: 'Calibri'
     });
 
+    // Texto de despacho desglosado: "X actas · Y casing + Z AIB"
+    let despachoLinea;
+    if (desCasingD > 0 && desAibD > 0) {
+      despachoLinea = `${k.despacho_actas} actas · ${this._n(desCasingD)} casing + ${desAibD} AIB`;
+    } else if (desAibD > 0) {
+      despachoLinea = `${k.despacho_actas} actas · ${desAibD} AIB`;
+    } else if (desCasingD > 0) {
+      despachoLinea = `${k.despacho_actas} actas · ${this._n(desCasingD)} casing`;
+    } else {
+      despachoLinea = `${k.despacho_actas} actas · 0 tubos`;
+    }
+
     const areas = [
       ['RECEPCIÓN',
        `${k.camiones_unicos} camiones · ${this._n(k.tubos_casing)} casing · ${k.equipos_aib} AIB`,
@@ -309,7 +337,7 @@ const GeneradorPPT = {
        `${k.estiba_dias} días · ${k.estiba_pkth.toFixed(2)} paq/h`,
        this.C.verde],
       ['DESPACHO',
-       `${k.despacho_actas} actas · ${k.despacho_tubos} tubos`,
+       despachoLinea,
        k.despacho_min > 0 ? `${Math.round(k.despacho_min)} min total` : '—',
        this.C.naranja]
     ];
@@ -522,11 +550,13 @@ const GeneradorPPT = {
       opt.periodoSubtitulo, this.C.naranja);
 
     const k = opt.kpis;
+    const dCas = k.despacho_tubos_casing || 0;
+    const dAib = k.despacho_tubos_aib || 0;
     const kpis = [
-      [String(k.despacho_actas),  'Actas Emitidas',     '',     this.C.naranja],
-      [String(k.despacho_tubos),  'Tubos Despachados',  '',     this.C.amarillo],
-      [`${Math.round(k.despacho_min)} min`, 'Tiempo Total', '', this.C.verde],
-      [String(k.despacho_ops),    'Operaciones',        'detalle por ítem', this.C.verde]
+      [String(k.despacho_actas),  'Actas Emitidas',      `${k.despacho_actas_casing || 0} casing · ${k.despacho_actas_aib || 0} AIB`, this.C.naranja],
+      [this._n(dCas),             'Tubos Casing',        'despachados',  this.C.amarillo],
+      [String(dAib),              'Equipos AIB',         'despachados',  this.C.verde],
+      [String(k.despacho_ops),    'Operaciones',         `${k.despacho_ops_casing || 0} casing · ${k.despacho_ops_aib || 0} AIB`, this.C.verde]
     ];
     const kw = 3.05, kh = 1.2, ky = 1.0;
     kpis.forEach((kpi, i) => {
@@ -594,15 +624,20 @@ const GeneradorPPT = {
       'Acumulado del proyecto', this.C.amarillo);
 
     const a = opt.acumulados;
-    const tubosNeto = a.tubos_casing - (a.despacho_tubos_casing || 0);
+    const desCasA = a.despacho_tubos_casing || 0;
+    const desAibA = a.despacho_tubos_aib || 0;
+    const tubosNeto = a.tubos_casing - desCasA;
+    const aibNeto = a.equipos_aib - desAibA;
     const pendiente = a.tubos_casing - a.estiba_tubos;
     const avanceEst = a.tubos_casing > 0
       ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
 
     // 3 KPIs principales
     const kpis = [
-      [this._n(tubosNeto), 'TUBOS CASING', 'En patio', this.C.verde],
-      [String(a.equipos_aib), 'EQUIPOS AIB', 'En patio', this.C.naranja],
+      [this._n(tubosNeto), 'TUBOS CASING',
+        `${this._n(a.tubos_casing)} − ${this._n(desCasA)} despachados`, this.C.verde],
+      [String(aibNeto), 'EQUIPOS AIB',
+        `${a.equipos_aib} − ${desAibA} despachados`, this.C.naranja],
       [this._n(pendiente), 'TUBOS POR ESTIBAR',
        (100 - avanceEst).toFixed(1) + '% pendiente', this.C.amarillo]
     ];
@@ -659,7 +694,10 @@ const GeneradorPPT = {
       ['Tubos estibados', this._n(a.estiba_tubos)],
       ['Operaciones de estiba', String(a.estiba_ops)],
       ['Actas de despacho', String(a.despacho_actas)],
-      ['Tubos despachados', String(a.despacho_tubos)],
+      ['Casing despachados', this._n(desCasA)],
+      ['AIB despachados', String(desAibA)],
+      ['Tubos casing en patio', this._n(tubosNeto)],
+      ['Equipos AIB en patio', String(aibNeto)],
       ['Eficiencia general', a.eficiencia_general.toFixed(1) + '%']
     ];
     const fy = 4.1, rh = 0.32, colW = 6.4;
@@ -762,8 +800,13 @@ const GeneradorPPT = {
       L.push(`• ${this._n(k.tubos_casing)} tubos casing recibidos en ${k.casing_camiones} camiones.`);
     if (k.estiba_tubos > 0)
       L.push(`• ${this._n(k.estiba_tubos)} tubos estibados (${k.estiba_paquetes} paq. en ${k.estiba_dias} días).`);
-    if (k.despacho_tubos > 0)
-      L.push(`• ${k.despacho_tubos} tubos despachados en ${k.despacho_actas} acta(s).`);
+    // Despacho separado por tipo
+    const dCas = k.despacho_tubos_casing || 0;
+    const dAib = k.despacho_tubos_aib || 0;
+    if (dCas > 0)
+      L.push(`• ${this._n(dCas)} tubos casing despachados en ${k.despacho_actas_casing || 0} acta(s).`);
+    if (dAib > 0)
+      L.push(`• ${dAib} equipo(s) AIB despachado(s) en ${k.despacho_actas_aib || 0} acta(s).`);
 
     const avanceEst = a.tubos_casing > 0 ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
     L.push(`• Avance acumulado de estiba: ${avanceEst.toFixed(1)}% del stock total de casing.`);

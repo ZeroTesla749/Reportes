@@ -8,10 +8,12 @@ const UIAgregar = {
 
   // Mapeo: para cada hoja, qué campo es el código y cuál la descripción
   // (necesario porque en recepción se llaman CODIGO SPRING / MEDIDA CASING)
+  // Para horometro no aplica catálogo
   camposCodigoDesc: {
     recepcion: { codigo: 'CODIGO SPRING', desc: 'MEDIDA CASING', tipo: 'TIPO MATERIAL' },
     estiba:    { codigo: 'CODIGO',        desc: 'DESCRIPCION',    tipo: null },
-    despacho:  { codigo: 'CODIGO',        desc: 'DESCRIPCION',    tipo: null }
+    despacho:  { codigo: 'CODIGO',        desc: 'DESCRIPCION',    tipo: null },
+    horometro: { codigo: null,            desc: null,             tipo: null }
   },
 
   // Campos del formulario por hoja
@@ -56,6 +58,13 @@ const UIAgregar = {
       { key: 'TOTAL DE TUBERIAS', label: 'Total tubos',       tipo: 'number' },
       { key: 'MONTACARGA',        label: 'Montacarga',        tipo: 'select', opciones: ['ZOMLION', 'HANGCHA'] },
       { key: 'OBSERVACIONES',     label: 'Observaciones',     tipo: 'textarea', full: true }
+    ],
+    horometro: [
+      { key: 'FECHA',              label: 'Fecha',              tipo: 'date',   req: true },
+      { key: 'HORO. INICIAL',      label: 'Horómetro inicial',  tipo: 'number', req: true },
+      { key: 'HORO. FINAL',        label: 'Horómetro final',    tipo: 'number', req: true },
+      { key: 'MONTACARGA',         label: 'Montacarga',         tipo: 'select', opciones: ['HANGCHA', 'ZOMLION'], req: true },
+      { key: 'NIVEL COMBUSTIBLE',  label: 'Nivel combustible (ej: 25% o 100)', tipo: 'text' }
     ]
   },
 
@@ -75,26 +84,30 @@ const UIAgregar = {
     const cont = document.getElementById('form-agregar-container');
     const campos = this.campos[this.hojaActual];
     const mapCodDesc = this.camposCodigoDesc[this.hojaActual];
+    const tieneCatalogo = mapCodDesc && mapCodDesc.codigo;
 
-    // Banner informativo del catálogo
+    // Banner informativo del catálogo (solo si la hoja usa catálogo)
     const catItems = Catalogo.todos();
-    let bannerCatalogo = `
-      <div class="catalogo-banner">
-        <div class="catalogo-banner-titulo">
-          <span>💡</span>
-          <strong>Auto-completado activo</strong>
-          <span class="catalogo-banner-info">Escribe el código en "${mapCodDesc.codigo}" y se rellena la descripción automáticamente. ${catItems.length} códigos en catálogo.</span>
+    let bannerCatalogo = '';
+    if (tieneCatalogo) {
+      bannerCatalogo = `
+        <div class="catalogo-banner">
+          <div class="catalogo-banner-titulo">
+            <span>💡</span>
+            <strong>Auto-completado activo</strong>
+            <span class="catalogo-banner-info">Escribe el código en "${mapCodDesc.codigo}" y se rellena la descripción automáticamente. ${catItems.length} códigos en catálogo.</span>
+          </div>
+          <button type="button" class="btn-secundario btn-mini" id="btn-ver-catalogo">Ver catálogo</button>
         </div>
-        <button type="button" class="btn-secundario btn-mini" id="btn-ver-catalogo">Ver catálogo</button>
-      </div>
-    `;
+      `;
+    }
 
     let html = bannerCatalogo + '<div class="form-grid">';
     campos.forEach(c => {
       const id = 'fld-' + this.hojaActual + '-' + c.key.replace(/[^a-z0-9]/gi, '_');
       const cls = c.full ? 'form-grupo full' : 'form-grupo';
-      const esCodigo = (c.key === mapCodDesc.codigo);
-      const esDescripcion = (c.key === mapCodDesc.desc);
+      const esCodigo = tieneCatalogo && (c.key === mapCodDesc.codigo);
+      const esDescripcion = tieneCatalogo && (c.key === mapCodDesc.desc);
       const extraLabel = esCodigo ? ' <span class="catalogo-hint">🔍 lookup</span>' :
                          esDescripcion ? ' <span class="catalogo-hint">auto</span>' : '';
 
@@ -139,15 +152,17 @@ const UIAgregar = {
 
     document.getElementById('btn-agregar-fila').addEventListener('click', () => this.guardar());
     document.getElementById('btn-limpiar-form').addEventListener('click', () => this.renderizar());
-    document.getElementById('btn-ver-catalogo').addEventListener('click', () => this._mostrarCatalogo());
+    const btnCat = document.getElementById('btn-ver-catalogo');
+    if (btnCat) btnCat.addEventListener('click', () => this._mostrarCatalogo());
 
-    // ========================================
-    // AUTO-COMPLETAR cuando se escribe el código
-    // ========================================
-    this._enlazarAutocompletar(mapCodDesc);
+    // AUTO-COMPLETAR cuando se escribe el código (solo si la hoja usa catálogo)
+    if (tieneCatalogo) {
+      this._enlazarAutocompletar(mapCodDesc);
+    }
   },
 
   _enlazarAutocompletar(mapCodDesc) {
+    if (!mapCodDesc || !mapCodDesc.codigo) return;
     const idCodigo = 'fld-' + this.hojaActual + '-' + mapCodDesc.codigo.replace(/[^a-z0-9]/gi, '_');
     const idDesc   = 'fld-' + this.hojaActual + '-' + mapCodDesc.desc.replace(/[^a-z0-9]/gi, '_');
     const idTipo   = mapCodDesc.tipo
