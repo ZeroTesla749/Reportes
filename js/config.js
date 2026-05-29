@@ -67,6 +67,11 @@ const CONFIG = {
     '440000028': { tipo: 'CASING', desc: 'CASING 9 5/8 - H40 32.3 LB/FT, LTC,BRD,R3' },
     '440000029': { tipo: 'CASING', desc: 'CASING 9 5/8 - N80 40.0 LB/FT, LTC,BRD,R3' },
     '440000030': { tipo: 'CASING', desc: 'CASING 13 3/8 - H40 48.0 LB/FT, LTC,BRD,R3' },
+    // === CASING ===
+    '290000001': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "A"' },
+    '290000002': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "B"' }, 
+    '290000003': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "M1"' }, 
+    '290000004': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "M2"' },  
     // === AIB ===
     '290000246': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C-80D-133-54 API 11E CLASE I' },
     '290000247': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C160D-200-74TH API 11E CLASE I' },
