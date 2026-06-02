@@ -56,6 +56,12 @@ const CONFIG = {
   // Usado para autocompletar descripción al escribir el código
   // en los formularios de Agregar Registros.
   //
+  // Tipos: CASING, AIB, VIGA
+  //
+  // OJO: AIB y VIGA empiezan con 290 pero son códigos únicos.
+  // La diferenciación se hace por la columna TIPO MATERIAL
+  // en recepción, y por el catálogo.tipo en despacho.
+  //
   // Para añadir nuevos códigos, agrega aquí una nueva entrada.
   // ============================================================
   catalogo: {
@@ -67,17 +73,17 @@ const CONFIG = {
     '440000028': { tipo: 'CASING', desc: 'CASING 9 5/8 - H40 32.3 LB/FT, LTC,BRD,R3' },
     '440000029': { tipo: 'CASING', desc: 'CASING 9 5/8 - N80 40.0 LB/FT, LTC,BRD,R3' },
     '440000030': { tipo: 'CASING', desc: 'CASING 13 3/8 - H40 48.0 LB/FT, LTC,BRD,R3' },
-    // === CASING ===
-    '290000001': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "A"' },
-    '290000002': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "B"' }, 
-    '290000003': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "M1"' }, 
-    '290000004': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "M2"' },  
     // === AIB ===
     '290000246': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C-80D-133-54 API 11E CLASE I' },
     '290000247': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C160D-200-74TH API 11E CLASE I' },
     '290000566': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C-228D-213-86 API 11E CLASE I' },
     '290000567': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C320D-305 API 11E CLASE I' },
-    '290000568': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C114D-173-64TH API 11E CLASE I' }
+    '290000568': { tipo: 'AIB', desc: 'UNIDAD BOMBEO, CONVENCIONAL AIB C114D-173-64TH API 11E CLASE I' },
+    // === VIGAS DE CONCRETO ===
+    '290000001': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "A"' },
+    '290000002': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO ARMADO TIPO "B"' },
+    '290000003': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO TIPO M1' },
+    '290000004': { tipo: 'VIGA', desc: 'VIGAS DE CONCRETO TIPO M2' }
   }
 };
 
@@ -122,71 +128,26 @@ const Prefs = {
   KEY_ETIQUETAS:    'reportes_laguna_etiquetas',
   KEY_PREPARADO:    'reportes_laguna_preparado_por',
   KEY_MONTAC_ESTADO: 'reportes_laguna_montac_estado',
-  KEY_ASISTENCIA:   'reportes_laguna_asistencia_guardada',
 
-  // Leer/escribir URL del Apps Script
-  getUrlApi() {
-    return localStorage.getItem(this.KEY_URL) || '';
-  },
-  setUrlApi(url) {
-    localStorage.setItem(this.KEY_URL, url);
-  },
+  getUrlApi() { return localStorage.getItem(this.KEY_URL) || ''; },
+  setUrlApi(url) { localStorage.setItem(this.KEY_URL, url); },
 
-  // Etiquetas de fotos
   getEtiquetas() {
     const raw = localStorage.getItem(this.KEY_ETIQUETAS);
     if (!raw) return [...CONFIG.etiquetasFotosDefault];
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      return [...CONFIG.etiquetasFotosDefault];
-    }
+    try { return JSON.parse(raw); } catch (e) { return [...CONFIG.etiquetasFotosDefault]; }
   },
-  setEtiquetas(arr) {
-    localStorage.setItem(this.KEY_ETIQUETAS, JSON.stringify(arr));
-  },
+  setEtiquetas(arr) { localStorage.setItem(this.KEY_ETIQUETAS, JSON.stringify(arr)); },
 
-  // Preparado por
   getPreparadoPor() {
-    return localStorage.getItem(this.KEY_PREPARADO) ||
-           CONFIG.proyecto.preparadoPorDefault;
+    return localStorage.getItem(this.KEY_PREPARADO) || CONFIG.proyecto.preparadoPorDefault;
   },
-  setPreparadoPor(nombre) {
-    localStorage.setItem(this.KEY_PREPARADO, nombre);
-  },
+  setPreparadoPor(nombre) { localStorage.setItem(this.KEY_PREPARADO, nombre); },
 
-  // Estado de cada montacarga
-  // Formato: { HANGCHA: 'OPERATIVO', ZOMLION: 'MANTENIMIENTO' }
   getEstadoMontacargas() {
     const raw = localStorage.getItem(this.KEY_MONTAC_ESTADO);
-    if (!raw) {
-      return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' };
-    }
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' };
-    }
+    if (!raw) return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' };
+    try { return JSON.parse(raw); } catch (e) { return { HANGCHA: 'OPERATIVO', ZOMLION: 'OPERATIVO' }; }
   },
-  setEstadoMontacargas(obj) {
-    localStorage.setItem(this.KEY_MONTAC_ESTADO, JSON.stringify(obj));
-  },
-
-  // Asistencia marcada (array de N° de personal)
-  // Formato: [1, 3, 5, 7, ...]  (los N° de la hoja PERSONAL)
-  getAsistenciaMarcada() {
-    const raw = localStorage.getItem(this.KEY_ASISTENCIA);
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      return [];
-    }
-  },
-  setAsistenciaMarcada(arr) {
-    localStorage.setItem(this.KEY_ASISTENCIA, JSON.stringify(arr));
-  },
-  limpiarAsistencia() {
-    localStorage.removeItem(this.KEY_ASISTENCIA);
-  }
+  setEstadoMontacargas(obj) { localStorage.setItem(this.KEY_MONTAC_ESTADO, JSON.stringify(obj)); }
 };

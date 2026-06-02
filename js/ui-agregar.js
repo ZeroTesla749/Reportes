@@ -22,7 +22,7 @@ const UIAgregar = {
       { key: 'FECHA',            label: 'Fecha',              tipo: 'date',   req: true },
       { key: 'PLACA TRACTO',     label: 'Placa del tracto',   tipo: 'text' },
       { key: 'N° GUIA',          label: 'N° de guía',         tipo: 'text' },
-      { key: 'TIPO MATERIAL',    label: 'Tipo de material',   tipo: 'select', opciones: ['CASING', 'AIB'], req: true },
+      { key: 'TIPO MATERIAL',    label: 'Tipo de material',   tipo: 'select', opciones: ['CASING', 'AIB', 'VIGA'], req: true },
       { key: 'CODIGO SPRING',    label: 'Código Spring',      tipo: 'text' },
       { key: 'MEDIDA CASING',    label: 'Descripción / Medida', tipo: 'text', full: true },
       { key: 'N° FOR',           label: 'N° FOR',             tipo: 'text' },
@@ -206,21 +206,31 @@ const UIAgregar = {
     const catItems = Catalogo.todos();
     const casing = catItems.filter(i => i.tipo === 'CASING');
     const aib = catItems.filter(i => i.tipo === 'AIB');
+    const viga = catItems.filter(i => i.tipo === 'VIGA');
 
     let html = '<div class="catalogo-tabla">';
-    html += '<h4 style="color: var(--c-amarillo); margin: 0 0 8px;">CASING (7)</h4>';
+    html += `<h4 style="color: var(--c-amarillo); margin: 0 0 8px;">CASING (${casing.length})</h4>`;
     html += '<table class="tabla-datos"><thead><tr><th>Código</th><th>Descripción</th></tr></thead><tbody>';
     casing.forEach(i => {
       html += `<tr><td><strong>${this._esc(i.codigo)}</strong></td><td>${this._esc(i.desc)}</td></tr>`;
     });
     html += '</tbody></table>';
 
-    html += '<h4 style="color: var(--c-naranja); margin: 16px 0 8px;">AIB (5)</h4>';
+    html += `<h4 style="color: var(--c-naranja); margin: 16px 0 8px;">AIB (${aib.length})</h4>`;
     html += '<table class="tabla-datos"><thead><tr><th>Código</th><th>Descripción</th></tr></thead><tbody>';
     aib.forEach(i => {
       html += `<tr><td><strong>${this._esc(i.codigo)}</strong></td><td>${this._esc(i.desc)}</td></tr>`;
     });
     html += '</tbody></table>';
+
+    if (viga.length > 0) {
+      html += `<h4 style="color: var(--c-verde); margin: 16px 0 8px;">VIGAS (${viga.length})</h4>`;
+      html += '<table class="tabla-datos"><thead><tr><th>Código</th><th>Descripción</th></tr></thead><tbody>';
+      viga.forEach(i => {
+        html += `<tr><td><strong>${this._esc(i.codigo)}</strong></td><td>${this._esc(i.desc)}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
     html += '</div>';
 
     document.getElementById('modal-titulo').textContent = 'Catálogo de materiales';

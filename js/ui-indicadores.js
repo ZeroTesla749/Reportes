@@ -19,6 +19,7 @@ const UIIndicadores = {
     const a = KPIs.acumuladosProyecto();
     const tubosNeto = a.tubos_casing - (a.despacho_tubos_casing || 0);
     const aibNeto = a.equipos_aib - (a.despacho_tubos_aib || 0);
+    const vigaNeto = (a.unidades_viga || 0) - (a.despacho_unidades_viga || 0);
     const pendiente = a.tubos_casing - a.estiba_tubos;
     const avance = a.tubos_casing > 0 ? (a.estiba_tubos / a.tubos_casing * 100) : 0;
 
@@ -44,9 +45,9 @@ const UIIndicadores = {
         </div>
         <div class="kpi-card amarillo">
           <div class="kpi-bar"></div>
-          <div class="kpi-valor">${a.eficiencia_general.toFixed(1)}%</div>
-          <div class="kpi-label">EFICIENCIA GENERAL</div>
-          <div class="kpi-sublabel">promedio</div>
+          <div class="kpi-valor">${this._n(a.unidades_viga || 0)}</div>
+          <div class="kpi-label">VIGAS CONCRETO</div>
+          <div class="kpi-sublabel">recibidas</div>
         </div>
       </div>
 
@@ -93,7 +94,7 @@ const UIIndicadores = {
 
       <div class="panel">
         <div class="panel-titulo amarillo">INVENTARIO EN PATIO</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
           <div>
             <div style="color: var(--c-txt-gris); font-size: 11px;">Tubos casing en patio</div>
             <div style="color: var(--c-verde); font-size: 22px; font-weight: 600;">${this._n(tubosNeto)}</div>
@@ -103,6 +104,11 @@ const UIIndicadores = {
             <div style="color: var(--c-txt-gris); font-size: 11px;">Equipos AIB en patio</div>
             <div style="color: var(--c-naranja); font-size: 22px; font-weight: 600;">${this._n(aibNeto)}</div>
             <div style="color: var(--c-txt-gris); font-size: 11px;">${a.equipos_aib} recibidos − ${a.despacho_tubos_aib || 0} despachados</div>
+          </div>
+          <div>
+            <div style="color: var(--c-txt-gris); font-size: 11px;">Vigas de concreto en patio</div>
+            <div style="color: var(--c-amarillo); font-size: 22px; font-weight: 600;">${this._n(vigaNeto)}</div>
+            <div style="color: var(--c-txt-gris); font-size: 11px;">${a.unidades_viga || 0} recibidas − ${a.despacho_unidades_viga || 0} despachadas</div>
           </div>
         </div>
       </div>

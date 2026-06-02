@@ -13,20 +13,25 @@ const KPIs = {
     // ----- Recepción -----
     const recCasing = rec.filter(r => r['TIPO MATERIAL'] === 'CASING');
     const recAib    = rec.filter(r => r['TIPO MATERIAL'] === 'AIB');
+    const recViga   = rec.filter(r => r['TIPO MATERIAL'] === 'VIGA');
 
     const camionesUnicos = LectorDatos.camionesUnicos(rec);
     const casingCamiones = LectorDatos.camionesUnicos(recCasing);
     const aibCamiones    = LectorDatos.camionesUnicos(recAib);
+    const vigaCamiones   = LectorDatos.camionesUnicos(recViga);
 
-    const tubosCasing = this._sum(recCasing, 'TUBOS TOTALES / TOTAL AIB');
-    const equiposAib  = this._sum(recAib,    'TUBOS TOTALES / TOTAL AIB');
+    const tubosCasing  = this._sum(recCasing, 'TUBOS TOTALES / TOTAL AIB');
+    const equiposAib   = this._sum(recAib,    'TUBOS TOTALES / TOTAL AIB');
+    const unidadesViga = this._sum(recViga,   'TUBOS TOTALES / TOTAL AIB');
 
     const eficGeneral = this._avg(rec, 'EFICIENCIA') * 100;
     const eficCasing  = this._avg(recCasing, 'EFICIENCIA') * 100;
     const eficAib     = this._avg(recAib,    'EFICIENCIA') * 100;
+    const eficViga    = this._avg(recViga,   'EFICIENCIA') * 100;
 
     const jornadaPromCasing = this._avg(recCasing, 'TIEMPO JORNADA');
     const jornadaPromAib    = this._avg(recAib,    'TIEMPO JORNADA');
+    const jornadaPromViga   = this._avg(recViga,   'TIEMPO JORNADA');
 
     // ----- Estiba -----
     const estOps      = est.length;
@@ -50,13 +55,17 @@ const KPIs = {
     const desTubos  = this._sum(des, 'TOTAL DE TUBERIAS');
     const desMin    = this._sum(des, 'TIEMPO') * 60;  // horas → min
 
-    // Clasificar despachos por tipo usando el CÓDIGO (290xxx=AIB, 440xxx=CASING)
+    // Clasificar despachos por tipo usando el CÓDIGO con catálogo
+    // (290xxx puede ser AIB o VIGA, por eso necesitamos el catálogo)
     const esTipoDespacho = (r) => {
       const cod = String(r['CODIGO'] || '').trim().replace(/^0+/, '');
       const item = Catalogo.buscar(cod);
       if (item) return item.tipo;
       // Fallback: por descripción
       const desc = String(r['DESCRIPCION'] || '').toUpperCase();
+      if (desc.includes('VIGA') || desc.includes('CONCRETO')) {
+        return 'VIGA';
+      }
       if (desc.includes('AIB') || desc.includes('UNIDAD BOMBEO') || desc.includes('BOMBEO')) {
         return 'AIB';
       }
@@ -64,25 +73,33 @@ const KPIs = {
     };
     const desCasing = des.filter(r => esTipoDespacho(r) === 'CASING');
     const desAib    = des.filter(r => esTipoDespacho(r) === 'AIB');
-    const desTubosCasing = this._sum(desCasing, 'TOTAL DE TUBERIAS');
-    const desTubosAib    = this._sum(desAib, 'TOTAL DE TUBERIAS');
+    const desViga   = des.filter(r => esTipoDespacho(r) === 'VIGA');
+    const desTubosCasing  = this._sum(desCasing, 'TOTAL DE TUBERIAS');
+    const desTubosAib     = this._sum(desAib,    'TOTAL DE TUBERIAS');
+    const desUnidadesViga = this._sum(desViga,   'TOTAL DE TUBERIAS');
     const desActasCasing = new Set(desCasing.map(r => r['N° DE ACTA']).filter(a => a)).size;
     const desActasAib    = new Set(desAib.map(r => r['N° DE ACTA']).filter(a => a)).size;
+    const desActasViga   = new Set(desViga.map(r => r['N° DE ACTA']).filter(a => a)).size;
     const desOpsCasing   = desCasing.length;
     const desOpsAib      = desAib.length;
+    const desOpsViga     = desViga.length;
 
     return {
       // Recepción
       camiones_unicos:    camionesUnicos,
       casing_camiones:    casingCamiones,
       aib_camiones:       aibCamiones,
+      viga_camiones:      vigaCamiones,
       tubos_casing:       tubosCasing,
       equipos_aib:        equiposAib,
+      unidades_viga:      unidadesViga,
       eficiencia_general: eficGeneral,
       eficiencia_casing:  eficCasing,
       eficiencia_aib:     eficAib,
+      eficiencia_viga:    eficViga,
       jornada_prom_casing: jornadaPromCasing,
       jornada_prom_aib:   jornadaPromAib,
+      jornada_prom_viga:  jornadaPromViga,
       // Estiba
       estiba_ops:      estOps,
       estiba_paquetes: estPaquetes,
@@ -96,13 +113,16 @@ const KPIs = {
       despacho_actas: desActas,
       despacho_tubos: desTubos,
       despacho_min:   desMin,
-      // Despacho - separado por tipo (lo nuevo, lo correcto)
-      despacho_tubos_casing: desTubosCasing,
-      despacho_tubos_aib:    desTubosAib,
-      despacho_actas_casing: desActasCasing,
-      despacho_actas_aib:    desActasAib,
-      despacho_ops_casing:   desOpsCasing,
-      despacho_ops_aib:      desOpsAib
+      // Despacho - separado por tipo
+      despacho_tubos_casing:    desTubosCasing,
+      despacho_tubos_aib:       desTubosAib,
+      despacho_unidades_viga:   desUnidadesViga,
+      despacho_actas_casing:    desActasCasing,
+      despacho_actas_aib:       desActasAib,
+      despacho_actas_viga:      desActasViga,
+      despacho_ops_casing:      desOpsCasing,
+      despacho_ops_aib:         desOpsAib,
+      despacho_ops_viga:        desOpsViga
     };
   },
 
@@ -126,12 +146,12 @@ const KPIs = {
 
     const recCasing = rec.filter(r => r['TIPO MATERIAL'] === 'CASING');
     const recAib    = rec.filter(r => r['TIPO MATERIAL'] === 'AIB');
+    const recViga   = rec.filter(r => r['TIPO MATERIAL'] === 'VIGA');
 
     // === AIB ===
     const stockAib = this._sum(recAib, 'TUBOS TOTALES / TOTAL AIB');
     const promDescargaAib = this._avg(recAib, 'TIEMPO JORNADA');
     const eficAib = this._avg(recAib, 'EFICIENCIA') * 100;
-    // Productividad AIB/h = total equipos / total horas
     const horasAib = this._sum(recAib, 'TIEMPO JORNADA') / 60;
     const prodAib = horasAib > 0 ? stockAib / horasAib : 0;
 
@@ -141,6 +161,13 @@ const KPIs = {
     const eficCasing = this._avg(recCasing, 'EFICIENCIA') * 100;
     const horasCasing = this._sum(recCasing, 'TIEMPO JORNADA') / 60;
     const prodTubosHora = horasCasing > 0 ? stockCasing / horasCasing : 0;
+
+    // === VIGA ===
+    const stockViga = this._sum(recViga, 'TUBOS TOTALES / TOTAL AIB');
+    const promDescargaViga = this._avg(recViga, 'TIEMPO JORNADA');
+    const eficViga = this._avg(recViga, 'EFICIENCIA') * 100;
+    const horasViga = this._sum(recViga, 'TIEMPO JORNADA') / 60;
+    const prodViga = horasViga > 0 ? stockViga / horasViga : 0;
 
     // === ESTIBADO ===
     const totalTubosEst = this._sum(est, 'TOTAL DE TUBERIAS');
@@ -159,6 +186,11 @@ const KPIs = {
       casing_stock_total: stockCasing,
       casing_eficiencia: eficCasing,
       casing_productividad: prodTubosHora,
+      // VIGA
+      viga_prom_descarga: promDescargaViga,
+      viga_stock_total: stockViga,
+      viga_eficiencia: eficViga,
+      viga_productividad: prodViga,
       // ESTIBADO
       est_total_tubos: totalTubosEst,
       est_total_paquetes: totalPaqEst,
